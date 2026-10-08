@@ -1,5 +1,13 @@
 # 驗證記錄
 
+## 2026-10-08 v0.5：依 ui-visual-design skill 重新設計（Apple 語彙＋深綠品牌）
+
+- 三個 Haiku 代理依 skill 與 DESIGN-INTENT.md 分別重設 popup、WAV 控制台、原生 GUI；ids／data-state／JS 契約未變。
+- contrast.py 以真實 token 檢查：popup 與 style.css 淺／深主題所有文字、按鈕字、焦點（3:1）、電平圖形（3:1）配對通過。過程中發現規格 `--muted` 在 `--surface-2` 上僅 4.19:1，新增 `--muted-2`。原生 GDI 實際繪製的文字組合全部 ≥ 4.5:1；停用文字 2.69:1（停用元件豁免）；選取白膠囊對灰軌道 1.21:1，選取狀態另以品牌色文字表示（與 Apple 分段控制相同做法）。
+- shot.mjs：控制台 360／768／1280、popup 340，淺＋深，含 `--state` 預覽（錄音中、已保存＋無聲警告、錯誤、不可錄頁面），全部無水平溢出、無 JS 錯誤。預覽為合成值，只驗版面與色彩。
+- 原生：fmt、clippy -D warnings、9 tests 通過；--gui-smoke idle／recording／recording-signal／converting／error／import／720px@144dpi 全 PASS。
+- JS 124 tests 通過。未驗：真實錄音中畫面的動畫、焦點框實際外觀、組合框仍為系統外觀。
+
 ## 2026-10-08 一鍵 MP3：真實 Chrome + suno.com 驗收
 
 - 使用者在自己的 Chrome 載入擴充，於 suno.com 播放自己帳號的歌曲，以面板「● 錄成 MP3」錄製並停止，檔案自動存到 下載/ClearAudio/。

@@ -14,19 +14,28 @@
   </header>
 
   <section id="last-section" class="card saved" hidden aria-label="已存檔">
-    <p class="label" id="last-folder">已存到 下載/ClearAudio/</p>
-    <strong id="last-filename" class="filename"></strong>
-    <p class="meta"><span id="last-duration"></span><span id="last-size"></span></p>
-    <p id="last-warning" class="warn" role="alert" hidden></p>
-    <button id="show" class="btn btn-secondary" type="button">在資料夾中顯示</button>
+    <div class="row row-stack">
+      <span class="label" id="last-folder">已存到 下載/ClearAudio/</span>
+      <strong id="last-filename" class="filename"></strong>
+    </div>
+    <div class="row row-meta">
+      <span id="last-duration"></span>
+      <span id="last-size"></span>
+    </div>
+    <p id="last-warning" class="row row-warn" role="alert" hidden></p>
+    <div class="row row-action">
+      <button id="show" class="btn btn-secondary" type="button">在資料夾中顯示</button>
+    </div>
   </section>
 
   <section id="idle-section" class="section">
     <div class="card source">
-      <p class="label">目前分頁</p>
-      <strong id="source-title" class="source-title">—</strong>
-      <p id="source-origin" class="origin"></p>
-      <p id="source-warning" class="warn" hidden></p>
+      <div class="row row-stack">
+        <span class="label">目前分頁</span>
+        <strong id="source-title" class="source-title">—</strong>
+        <p id="source-origin" class="origin"></p>
+      </div>
+      <p id="source-warning" class="row row-warn" hidden></p>
     </div>
 
     <fieldset id="quality-section" class="quality">
@@ -50,17 +59,23 @@
     <p id="error-guidance" class="error-guidance"></p>
   </section>
 
-  <section id="recording-section" class="record" hidden aria-label="錄音中">
-    <p id="rec-title" class="rec-title"></p>
-    <div id="clock" class="clock" aria-live="off">00:00</div>
-    <meter id="meter" min="0" max="1" value="0" aria-label="即時音量"></meter>
-    <dl class="tiles">
-      <div class="tile"><dt>檔案大小</dt><dd id="stat-size">—</dd></div>
-      <div class="tile"><dt>峰值保持</dt><dd id="stat-peak">—</dd></div>
-      <div class="tile"><dt>位元率</dt><dd id="stat-bitrate">—</dd></div>
+  <section id="recording-section" class="card record" hidden aria-label="錄音中">
+    <div class="rec-top">
+      <p id="rec-title" class="rec-title"></p>
+      <div id="clock" class="clock" aria-live="off">00:00</div>
+    </div>
+    <div class="rec-meter">
+      <meter id="meter" min="0" max="1" value="0" optimum="0" low="0.9" high="0.999" aria-label="即時音量"></meter>
+    </div>
+    <dl class="stats">
+      <div class="row"><dt>檔案大小</dt><dd id="stat-size">—</dd></div>
+      <div class="row"><dt>峰值保持</dt><dd id="stat-peak">—</dd></div>
+      <div class="row"><dt>位元率</dt><dd id="stat-bitrate">—</dd></div>
     </dl>
-    <button id="stop" class="btn btn-danger btn-big" type="button">■ 停止並存 MP3</button>
-    <button id="cancel" class="btn btn-ghost" type="button">取消（不保存）</button>
+    <div class="actions">
+      <button id="stop" class="btn btn-danger btn-big" type="button">■ 停止並存 MP3</button>
+      <button id="cancel" class="btn btn-ghost" type="button">取消（不保存）</button>
+    </div>
   </section>
 
   <section id="saving-section" class="card saving" hidden aria-label="存檔中">

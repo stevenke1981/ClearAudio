@@ -11,7 +11,7 @@
 | 分頁無損 WAV | 面板「進階：錄成無損 WAV」開控制台，float PCM WAV | 自產 PCM／mock 生命週期測試通過；未完成真實授權驗收 |
 | MP3 / FLAC 另存 | 外部 FFmpeg，VBR q2／CBR192／CBR320／FLAC 24-bit | 自產音訊轉檔、解碼、取消與來源保留已驗證 |
 
-Rust GUI 版本 0.4.0；分頁擴充版本 0.4.0。此 repository 先提供來源，不發布未驗收錄音能力的 binary Release。只用於你有權保存、且來源服務允許錄製的音訊，不提供繞過 DRM、付費或下載限制的功能。
+Rust GUI 版本 0.5.0；分頁擴充版本 0.5.0。介面設計規格見 [DESIGN-INTENT.md](DESIGN-INTENT.md)（依 [ui-visual-design](https://github.com/stevenke1981/ui-visual-design) skill）。此 repository 先提供來源，不發布未驗收錄音能力的 binary Release。只用於你有權保存、且來源服務允許錄製的音訊，不提供繞過 DRM、付費或下載限制的功能。
 
 ## 原生程式
 

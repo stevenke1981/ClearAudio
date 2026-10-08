@@ -1,72 +1,96 @@
-/* Clear Audio · 分頁控制台
- * 深綠識別色、單一紅色（錄音與錯誤）、8px 間距、12–16px 圓角。
- * 所有視覺皆由真實資料驅動（PCM peak、計時、檔案大小），無假波形。 */
+/* Clear Audio · 分頁控制台（DESIGN-INTENT v0.5：Apple 語彙 + 深綠品牌）
+ * 群組背景 + 白色圓角卡；深綠只給主要動作、選取與焦點；錄音狀態用紅色膠囊。
+ * 所有計量來自真實 PCM peak 與計時，畫面上沒有假波形。 */
 
 /* ---------- Tokens ---------- */
 :root {
-  --font-ui: "Microsoft JhengHei UI", "Microsoft JhengHei", system-ui, sans-serif;
-  --font-num: "Segoe UI", system-ui, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI", "PingFang TC", system-ui, sans-serif;
+  --font-num: "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
 
-  /* page surfaces */
-  --bg: #f3f6f5;
+  /* surfaces (grouped background, cards, raised tiles) */
+  --bg: #f2f2f7;
   --surface: #ffffff;
-  --border: #dce5e0;
-  --text: #203832;
-  --muted: #5e726a;
+  --surface-2: #e9e9ee;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --separator: rgba(60, 60, 67, 0.18);
+  --input-border: #8e8e93;
+  /* secondary text on --surface-2 (#6E6E73 gives only 4.19:1 there); darker tint keeps 4.5:1 */
+  --muted-2: #66666b;
+
+  /* semantic colour */
   --brand: #146e59;
-  --badge-bg: #e4f2ec;
+  --brand-ink: #ffffff;
+  --danger: #c4141c;
+  --danger-ink: #ffffff;
+  --warn: #b25000;
+  --focus: #146e59;
 
-  /* recorder panel (always dark deep green) */
-  --panel: #173a31;
-  --panel-line: rgba(181, 208, 196, 0.22);
-  --panel-text: #ffffff;
-  --panel-muted: #b5d0c4;
-  --well: #10302a;
+  /* real-peak history bars and meter fills (read by recorder.js / meter CSS) */
+  --meter-ok: #248a3d;
+  --meter-warn: #b25000;
+  --meter-clip: #c4141c;
 
-  /* accent + the single red (two lightness values: text on page, dot on panel) */
-  --accent: #65cfac;
-  --accent-hover: #7ddcbc;
-  --accent-ink: #0b2620;
-  --red: #b3261e;
-  --rec: #ff6b5e;
-  --rec-soft: rgba(255, 107, 94, 0.16);
-  --amber: #e5bc62;
-  /* focus ring on page surfaces (light): deep amber, 5.4:1 on --bg. Dark theme overrides below. */
-  --focus: #8a5a00;
-
-  /* real-peak history bars (read by recorder.js) */
-  --meter-ok: #65cfac;
-  --meter-warn: #e5bc62;
-  --meter-clip: #ff6b5e;
-
-  --r-lg: 16px;
-  --r-md: 12px;
-  --shadow: 0 1px 2px rgba(23, 58, 49, 0.06), 0 8px 24px rgba(23, 58, 49, 0.08);
+  /* concentric radii: card 16 - 4px inset = well 12; canvas inside well = 12 - 4 = 8 */
+  --r-card: 16px;
+  --r-well: 12px;
+  --r-canvas: 8px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e1d19;
-    --surface: #14261f;
-    --border: #2b4339;
-    --text: #e3efe9;
-    --muted: #a3bab0;
-    --brand: #65cfac;
-    --badge-bg: #1c3a31;
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --text: #f5f5f7;
+    --muted: #98989d;
+    --separator: rgba(84, 84, 88, 0.6);
+    --input-border: #8e8e93;
+    --muted-2: #98989d;
 
-    --panel: #1d4a3e;
-    --well: #0b1f19;
+    --brand: #5fcca6;
+    --brand-ink: #062019;
+    --danger: #ff6961;
+    --danger-ink: #2a0503;
+    --warn: #ffb340;
+    --focus: #5fcca6;
 
-    --red: #ff8a80;
-    --rec: #ff6b5e;
-    --rec-soft: rgba(255, 107, 94, 0.2);
-    --focus: #f2cc73;
+    --meter-ok: #30d158;
+    --meter-warn: #ffb340;
+    --meter-clip: #ff6961;
 
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow: none;
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --text: #f5f5f7;
+  --muted: #98989d;
+  --separator: rgba(84, 84, 88, 0.6);
+  --input-border: #8e8e93;
+  --muted-2: #98989d;
+
+  --brand: #5fcca6;
+  --brand-ink: #062019;
+  --danger: #ff6961;
+  --danger-ink: #2a0503;
+  --warn: #ffb340;
+  --focus: #5fcca6;
+
+  --meter-ok: #30d158;
+  --meter-warn: #ffb340;
+  --meter-clip: #ff6961;
+
+  --shadow: none;
+  color-scheme: dark;
 }
 
 /* ---------- Base ---------- */
@@ -81,110 +105,150 @@ html {
 body {
   margin: 0;
   min-width: 0;
-  font: 16px/1.6 var(--font-ui);
+  font: 16px/1.5 var(--font-ui);
   color: var(--text);
   background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
-  max-width: 880px;
+  max-width: 720px;
   min-width: 0;
-  margin: 48px auto;
-  padding: 0 24px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
 }
 
 p {
   margin: 12px 0;
-  line-height: 1.6;
+  line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
 h1 {
-  margin: 0 0 8px;
-  font-size: 30px;
-  line-height: 1.4;
+  margin: 24px 0 4px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 h2 {
-  margin: 0 0 16px;
-  font-size: 17px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--muted);
 }
 
 h3 {
   margin: 0 0 8px;
-  font-size: 15px;
-}
-
-.intro,
-.hint,
-footer {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
   color: var(--muted);
-  line-height: 1.7;
 }
 
 .intro {
-  margin: 0 0 24px;
+  margin: 0 0 8px;
+  color: var(--muted);
 }
 
 .hint,
 footer {
   font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
 }
 
-/* ---------- Top bar ---------- */
+footer {
+  margin: 24px 0 0;
+  padding: 0 4px;
+}
+
+/* ---------- Sticky translucent header ---------- */
 header.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--separator);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  header.top {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.top-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 12px;
+  max-width: 720px;
+  min-height: 52px;
+  margin: 0 auto;
+  padding: 8px 24px;
 }
 
 .brand {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .badge {
-  font-size: 13px;
+  min-width: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
   color: var(--brand);
-  background: var(--badge-bg);
-  padding: 8px 12px;
-  border-radius: 8px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
-/* ---------- Cards (source / result) ---------- */
+/* ---------- Cards ---------- */
 .card {
   margin: 16px 0;
-  padding: 24px;
+  padding: 20px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   box-shadow: var(--shadow);
 }
 
 .source strong {
   display: block;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
-/* ---------- Recorder panel ---------- */
-.record {
-  --focus: var(--amber); /* panel is always dark: bright amber ring, 6.9:1 on --panel */
-  margin: 16px 0;
-  padding: 24px;
-  color: var(--panel-text);
-  background: var(--panel);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow);
+#origin {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
 }
 
+.source .hint {
+  margin: 12px 0 0;
+}
+
+/* ---------- Recorder card ---------- */
 .record h2 {
   margin: 0;
-  color: var(--panel-text);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .record-head {
@@ -192,21 +256,22 @@ header.top {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 8px 12px;
 }
 
-/* Status pill: idle is the default; recording/starting/finishing set on body[data-state]. */
+/* Status capsule. Recording = red capsule with pulsing dot (the one red moment on the page). */
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 16px;
-  font-size: 14px;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--panel-muted);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--panel-line);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--muted-2);
+  background: var(--surface-2);
   border-radius: 999px;
 }
 
@@ -217,68 +282,59 @@ header.top {
   flex: none;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.6;
 }
 
-body[data-state="starting"] #pill {
-  color: var(--accent);
-  border-color: rgba(101, 207, 172, 0.5);
-}
-
-body[data-state="starting"] #pill::before {
-  opacity: 1;
+body[data-state="starting"] #pill,
+body[data-state="finishing"] #pill {
+  color: var(--brand);
 }
 
 body[data-state="recording"] #pill {
-  color: #ffd5cf;
-  background: var(--rec-soft);
-  border-color: rgba(255, 107, 94, 0.55);
+  color: var(--danger-ink);
+  background: var(--danger);
 }
 
 body[data-state="recording"] #pill::before {
-  background: var(--rec);
-  opacity: 1;
-  animation: rec-pulse 1.4s ease-in-out infinite;
+  background: var(--danger-ink);
 }
 
-body[data-state="finishing"] #pill {
-  color: var(--accent);
-  border-color: rgba(101, 207, 172, 0.5);
-}
-
-body[data-state="finishing"] #pill::before {
-  background: var(--accent);
-  opacity: 1;
+@media (prefers-reduced-motion: no-preference) {
+  body[data-state="recording"] #pill::before {
+    animation: rec-pulse 1.4s ease-in-out infinite;
+  }
 }
 
 @keyframes rec-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 94, 0.6);
+    transform: scale(1);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(255, 107, 94, 0);
+    transform: scale(0.55);
+    opacity: 0.45;
   }
 }
 
-/* Large timer */
+/* Large light tabular timer */
 .clock {
-  margin: 16px 0 8px;
+  margin: 12px 0 4px;
   font-family: var(--font-num);
   font-size: 64px;
-  font-weight: 500;
+  font-weight: 300;
   line-height: 1.1;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.02em;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 #format {
   margin: 0;
-  font-size: 14px;
-  color: var(--panel-muted);
+  font-size: 13px;
+  color: var(--muted);
 }
 
-/* Stat tiles */
+/* Stat tiles on surface-2 */
 .tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -290,37 +346,41 @@ body[data-state="finishing"] #pill::before {
 .tile {
   min-width: 0;
   margin: 0;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--panel-line);
-  border-radius: var(--r-md);
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--r-well);
 }
 
 .tile dt {
   font-size: 12px;
-  color: var(--panel-muted);
+  line-height: 1.3;
+  color: var(--muted-2);
 }
 
 .tile dd {
-  margin: 0;
-  font-size: 18px;
+  margin: 2px 0 0;
+  font-size: 17px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
-/* Rolling peak history (drawn by recorder.js) */
+/* Rolling peak history well (drawn by recorder.js; colours from --meter-* tokens) */
+.well {
+  margin-top: 16px;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: var(--r-well);
+}
+
 #history {
   display: block;
   width: 100%;
-  height: 72px;
-  margin-top: 16px;
-  background: var(--well);
-  border: 1px solid var(--panel-line);
-  border-radius: var(--r-md);
+  height: 88px;
+  border-radius: var(--r-canvas);
 }
 
-/* Peak meter with segmented fill (green -> amber -> red by region) */
+/* Meter: solid capsule fill, green -> amber (>= -6 dBFS) -> red (clip) */
 .meter-block {
   margin-top: 16px;
 }
@@ -330,17 +390,17 @@ meter {
   appearance: none;
   display: block;
   width: 100%;
-  height: 16px;
+  height: 10px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--well);
+  background: var(--surface-2);
 }
 
 meter::-webkit-meter-bar {
-  height: 16px;
-  background: var(--well);
+  height: 10px;
+  background: var(--surface-2);
   border: 0;
   border-radius: 999px;
 }
@@ -352,42 +412,42 @@ meter::-webkit-meter-inner-element {
 meter::-webkit-meter-optimum-value {
   height: 100%;
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 10px);
+  background: var(--meter-ok);
 }
 
 meter::-webkit-meter-suboptimum-value {
   height: 100%;
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, var(--amber) 0 8px, transparent 8px 10px);
+  background: var(--meter-warn);
 }
 
 meter::-webkit-meter-even-less-good-value {
   height: 100%;
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, var(--rec) 0 8px, transparent 8px 10px);
+  background: var(--meter-clip);
 }
 
 meter::-moz-meter-bar {
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 10px);
+  background: var(--meter-ok);
 }
 
 meter:-moz-meter-sub-optimum::-moz-meter-bar {
-  background: repeating-linear-gradient(90deg, var(--amber) 0 8px, transparent 8px 10px);
+  background: var(--meter-warn);
 }
 
 meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
-  background: repeating-linear-gradient(90deg, var(--rec) 0 8px, transparent 8px 10px);
+  background: var(--meter-clip);
 }
 
 /* dB scale: positions follow meter value = (dB + 60) / 60 */
 .scale {
   position: relative;
-  height: 32px;
-  margin-top: 8px;
-  font-size: 12px;
+  height: 28px;
+  margin-top: 6px;
+  font-size: 11px;
   line-height: 1;
-  color: var(--panel-muted);
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -402,7 +462,7 @@ meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
   content: "";
   display: block;
   width: 1px;
-  height: 6px;
+  height: 4px;
   margin: 0 auto 4px;
   background: currentColor;
   opacity: 0.6;
@@ -431,11 +491,13 @@ meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
 
 .scale .s-6 {
   left: 90%;
+  color: var(--warn);
 }
 
 .scale .s-0 {
   left: 100%;
   transform: translateX(-100%);
+  color: var(--danger);
 }
 
 .scale .s-0::before {
@@ -444,15 +506,15 @@ meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
 
 .level {
   margin: 8px 0 0;
-  font-size: 14px;
-  color: var(--panel-muted);
+  font-size: 13px;
+  color: var(--muted);
 }
 
-/* ---------- Buttons ---------- */
+/* ---------- Capsule buttons ---------- */
 .buttons {
   display: flex;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 12px;
+  margin-top: 20px;
 }
 
 .btn {
@@ -462,114 +524,159 @@ meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
   justify-content: center;
   flex: 1 1 0;
   min-width: 0;
-  min-height: 44px;
-  padding: 12px 24px;
+  min-height: 48px;
+  padding: 0 20px;
   font: inherit;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: 999px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), filter 0.2s var(--ease), transform 0.2s var(--ease);
 }
 
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* start = brand primary */
 .btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--brand);
+  color: var(--brand-ink);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  filter: brightness(1.08);
 }
 
+/* stop = danger while it can be used (recording) */
+.btn-danger {
+  background: var(--danger);
+  color: var(--danger-ink);
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+/* cancel = secondary */
 .btn-secondary {
-  background: var(--panel-text);
-  color: var(--panel);
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--input-border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e6f3ee;
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--panel-text);
-  border-color: var(--panel-line);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-2);
 }
 
 .btn:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  border-color: transparent;
   cursor: not-allowed;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.42);
-  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .btn:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .shortcuts {
-  margin: 16px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 12px 0 0;
   font-size: 13px;
-  color: var(--panel-muted);
-  text-align: center;
+  color: var(--muted);
+}
+
+.key {
+  white-space: nowrap;
 }
 
 kbd {
   display: inline-block;
-  padding: 4px 8px;
-  font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
-  font-size: 12px;
-  line-height: 1;
-  color: var(--panel-text);
+  padding: 2px 6px;
+  font: 600 12px/1.4 ui-monospace, Consolas, "Cascadia Mono", monospace;
+  color: var(--text);
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--panel-line);
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
   border-radius: 6px;
 }
 
 /* ---------- Result ---------- */
 #filename {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
+  font-size: 15px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 #status {
-  margin: 8px 0 16px;
-  font-weight: 600;
+  margin: 4px 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
   white-space: pre-wrap;
 }
 
 body[data-error="true"] #status {
-  color: var(--red);
+  color: var(--danger);
 }
 
 .recent {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  margin-top: 20px;
 }
 
+/* Inset-grouped list: rows >= 44px, hairline separators indented to the text */
 #recent {
   margin: 0;
-  padding-left: 24px;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--r-well);
 }
 
 #recent li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-height: 44px;
+  padding: 10px 16px;
   overflow-wrap: anywhere;
 }
 
-#recent li:last-child {
-  border-bottom: 0;
+#recent li + li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+}
+
+#recent .name {
+  flex: 1 0 100%;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+#recent .clock,
+#recent .size,
+#recent .time {
+  font-size: 13px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
 }
 
 #recent-empty {
@@ -582,15 +689,10 @@ body[data-error="true"] #status {
   display: none;
 }
 
-footer {
-  margin: 24px 0 40px;
-}
-
 /* ---------- Motion preference ---------- */
 @media (prefers-reduced-motion: reduce) {
   body[data-state="recording"] #pill::before {
     animation: none;
-    box-shadow: 0 0 0 2px rgba(255, 107, 94, 0.35);
   }
 
   .btn {
@@ -607,34 +709,32 @@ footer {
 
 @media (max-width: 560px) {
   main {
-    margin: 24px auto;
-    padding: 0 16px;
+    padding: 0 16px 40px;
+  }
+
+  .top-inner {
+    padding: 8px 16px;
   }
 
   h1 {
     font-size: 25px;
   }
 
-  .card,
-  .record {
-    padding: 20px;
+  .card {
+    padding: 16px;
   }
 
   .clock {
-    font-size: 56px;
+    font-size: 52px;
   }
 
   .buttons {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 
   .btn {
     flex: none;
     width: 100%;
-  }
-
-  .badge {
-    max-width: 150px;
   }
 }

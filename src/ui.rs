@@ -1,4 +1,6 @@
 //! Native DPI-aware recording workspace; custom GDI surfaces with real keyboard-accessible controls.
+//! Visual language follows DESIGN-INTENT.md (Apple-style light tokens): grouped background, white
+//! cards with a hairline separator, capsule buttons, and a light sidebar.
 use crate::{capture, convert};
 use std::{
     collections::BTreeMap,
@@ -38,22 +40,21 @@ const EXPORT: usize = 21;
 const ENCODER: usize = 22;
 const HELP: usize = 23;
 const DETAILS: usize = 24;
-const BG: u32 = 0xf3f6f5;
-const WHITE: u32 = 0xffffff;
-const INK: u32 = 0x203832;
-const MUTED: u32 = 0x5e726a;
-const LINE: u32 = 0xdce5e0;
-const TEAL: u32 = 0x146e59;
-const PALE: u32 = 0xe4f2ec;
-const DARK: u32 = 0x173a31;
-const LIGHT: u32 = 0xb5d0c4;
-const ERROR: u32 = 0xa33b35;
-const AMBER: u32 = 0xe5bc62;
-const HOT: u32 = 0xff7a6e;
-const LEVEL: u32 = 0x79dfb1;
-const REC_DOT: u32 = 0xe5534a;
-const NAV: u32 = 0x24503f;
-const ACCENT: u32 = 0x6ed3af;
+// Light tokens (DESIGN-INTENT.md, light column).
+const BG: u32 = 0xf2f2f7; // grouped background
+const WHITE: u32 = 0xffffff; // card surface
+const SEP: u32 = 0xe0e0e5; // 1px hairline card border
+const WELL: u32 = 0xe9e9ee; // tracks, wells, secondary fill, sidebar
+const INK: u32 = 0x1d1d1f; // primary text
+const MUTED: u32 = 0x6e6e73; // secondary text
+const SIDE_MUTED: u32 = 0x636366; // secondary text on the sidebar well (6E6E73 is 4.19:1 there)
+const BRAND: u32 = 0x146e59; // brand, links, focus
+const DANGER: u32 = 0xc4141c; // recording, errors, destructive
+const DISABLED: u32 = 0x8e8e93; // disabled text (exempt from contrast rules)
+const METER_OK: u32 = 0x248a3d;
+const METER_WARN: u32 = 0xb25000;
+const METER_CLIP: u32 = 0xc4141c;
+const PEAK: u32 = 0x1d1d1f; // peak-hold marker
 const RECORD_H: i32 = 336;
 const HISTORY: usize = 120;
 fn color(rgb: u32) -> COLORREF {
@@ -196,7 +197,15 @@ impl State {
     }
 }
 unsafe fn fonts(dpi: u32) -> [HFONT; 5] {
-    [(15, 400), (13, 400), (24, 600), (52, 400), (16, 600)].map(|(size, weight)| {
+    // (size at 96 DPI, weight, face): 0 body, 1 caption, 2 heading, 3 timer, 4 semibold label.
+    [
+        (15, 400, w!("Microsoft JhengHei UI")),
+        (13, 400, w!("Microsoft JhengHei UI")),
+        (24, 600, w!("Microsoft JhengHei UI")),
+        (56, 300, w!("Segoe UI Light")),
+        (16, 600, w!("Microsoft JhengHei UI")),
+    ]
+    .map(|(size, weight, face)| {
         CreateFontW(
             -(size * dpi as i32 / 96),
             0,
@@ -211,11 +220,7 @@ unsafe fn fonts(dpi: u32) -> [HFONT; 5] {
             0,
             CLEARTYPE_QUALITY.0 as u32,
             0,
-            if size == 52 {
-                w!("Segoe UI")
-            } else {
-                w!("Microsoft JhengHei UI")
-            },
+            face,
         )
     })
 }
@@ -232,6 +237,21 @@ unsafe fn label(dc: HDC, s: &State, a: Area, t: &str, f: usize, c: u32, wrap: bo
             DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS
         };
     DrawTextW(dc, &mut text, &mut r, flags);
+    SelectObject(dc, old);
+}
+/// Single-line text in an absolute device-independent rect (not scrolled; used by the fixed sidebar).
+unsafe fn text_box(dc: HDC, s: &State, r: RECT, t: &str, f: usize, c: u32) {
+    let old = SelectObject(dc, s.fonts[f]);
+    SetTextColor(dc, color(c));
+    SetBkMode(dc, TRANSPARENT);
+    let mut r = r;
+    let mut text: Vec<u16> = t.encode_utf16().collect();
+    DrawTextW(
+        dc,
+        &mut text,
+        &mut r,
+        DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS,
+    );
     SelectObject(dc, old);
 }
 unsafe fn fill(dc: HDC, r: RECT, c: u32) {
@@ -256,19 +276,76 @@ unsafe fn round_rect(dc: HDC, r: RECT, bg: u32, border: Option<u32>, radius: i32
         let _ = DeleteObject(p);
     }
 }
-unsafe fn card(dc: HDC, s: &State, a: Area, bg: u32, border: u32) {
-    round_rect(dc, s.rect(a), bg, Some(border), s.px(16));
+/// Capsule: corner diameter equals the height, so both ends are full semicircles.
+unsafe fn pill(dc: HDC, r: RECT, bg: u32) {
+    round_rect(dc, r, bg, None, r.bottom - r.top);
 }
-/// Filled red (or any) dot, used as the recording indicator.
-unsafe fn dot(dc: HDC, s: &State, a: Area, c: u32) {
-    let r = s.rect(a);
-    let b = CreateSolidBrush(color(c));
+/// White (or tinted) card with a 1px hairline border; corner diameter 32 px = 16 px radius.
+unsafe fn card(dc: HDC, s: &State, a: Area, bg: u32, border: u32) {
+    round_rect(dc, s.rect(a), bg, Some(border), s.px(32));
+}
+unsafe fn ellipse(dc: HDC, r: RECT, rgb: u32) {
+    let b = CreateSolidBrush(color(rgb));
     let ob = SelectObject(dc, b);
     let op = SelectObject(dc, GetStockObject(NULL_PEN));
     let _ = Ellipse(dc, r.left, r.top, r.right, r.bottom);
     SelectObject(dc, ob);
     SelectObject(dc, op);
     let _ = DeleteObject(b);
+}
+/// Status capsule (`at` in logical px) with an optional leading dot; `tone` = (fill, text, dot).
+unsafe fn capsule(dc: HDC, s: &State, at: (i32, i32), t: &str, tone: (u32, u32, Option<u32>)) {
+    let (fill_rgb, ink, dot_rgb) = tone;
+    let mut text: Vec<u16> = t.encode_utf16().collect();
+    let old = SelectObject(dc, s.fonts[4]);
+    let mut measure = RECT::default();
+    DrawTextW(
+        dc,
+        &mut text,
+        &mut measure,
+        DT_SINGLELINE | DT_CALCRECT | DT_NOPREFIX,
+    );
+    SelectObject(dc, old);
+    let pad = s.px(14);
+    let dot_w = if dot_rgb.is_some() { s.px(20) } else { 0 };
+    let left = s.px(at.0);
+    let top = s.px(at.1);
+    let r = RECT {
+        left,
+        top,
+        right: left + pad * 2 + dot_w + (measure.right - measure.left),
+        bottom: top + s.px(28),
+    };
+    pill(dc, r, fill_rgb);
+    if let Some(c) = dot_rgb {
+        let cy = (r.top + r.bottom) / 2;
+        ellipse(
+            dc,
+            RECT {
+                left: left + pad,
+                top: cy - s.px(5),
+                right: left + pad + s.px(10),
+                bottom: cy + s.px(5),
+            },
+            c,
+        );
+    }
+    let old = SelectObject(dc, s.fonts[4]);
+    SetTextColor(dc, color(ink));
+    SetBkMode(dc, TRANSPARENT);
+    let mut tr = RECT {
+        left: left + pad + dot_w,
+        top,
+        right: r.right - pad,
+        bottom: r.bottom,
+    };
+    DrawTextW(
+        dc,
+        &mut text,
+        &mut tr,
+        DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX,
+    );
+    SelectObject(dc, old);
 }
 /// Small dB scale label; `align` is DT_LEFT, DT_CENTER or DT_RIGHT.
 unsafe fn tick(dc: HDC, s: &State, a: Area, t: &str, c: u32, align: DRAW_TEXT_FORMAT) {
@@ -307,11 +384,11 @@ fn db_pos(d: f32, span: i32) -> i32 {
 }
 fn level_color(d: f32) -> u32 {
     if d >= 0. {
-        HOT
+        METER_CLIP
     } else if d >= -6. {
-        AMBER
+        METER_WARN
     } else {
-        LEVEL
+        METER_OK
     }
 }
 /// Fixed ring of recent interval peaks (one per UI tick) plus the peak-hold value since start.
@@ -354,44 +431,38 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
     let x = l.main.x;
     let w = l.main.w;
     if l.sidebar {
+        // Light sidebar: sidebar well, hairline divider, selected nav item as a white capsule.
+        let side = RECT {
+            left: 0,
+            top: 0,
+            right: s.px(184),
+            bottom: client.bottom,
+        };
+        fill(dc, side, WELL);
         fill(
             dc,
             RECT {
-                left: 0,
+                left: side.right,
                 top: 0,
-                right: s.px(184),
+                right: side.right + 1,
                 bottom: client.bottom,
             },
-            DARK,
+            SEP,
         );
-        let mut r = RECT {
-            left: s.px(24),
-            top: s.px(30),
-            right: s.px(172),
-            bottom: s.px(66),
-        };
-        let old = SelectObject(dc, s.fonts[4]);
-        SetTextColor(dc, color(WHITE));
-        SetBkMode(dc, TRANSPARENT);
-        DrawTextW(
+        text_box(
             dc,
-            &mut "Clear Audio".encode_utf16().collect::<Vec<_>>(),
-            &mut r,
-            DT_SINGLELINE | DT_VCENTER,
-        );
-        SelectObject(dc, old);
-        fill(
-            dc,
+            s,
             RECT {
                 left: s.px(24),
-                top: s.px(84),
-                right: s.px(64),
-                bottom: s.px(87),
+                top: s.px(30),
+                right: s.px(172),
+                bottom: s.px(66),
             },
-            ACCENT,
+            "Clear Audio",
+            4,
+            INK,
         );
-        // Active nav item: subtle pill with a left accent bar.
-        round_rect(
+        pill(
             dc,
             RECT {
                 left: s.px(12),
@@ -399,56 +470,39 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
                 right: s.px(172),
                 bottom: s.px(146),
             },
-            NAV,
-            None,
-            s.px(16),
+            WHITE,
         );
-        fill(
+        text_box(
             dc,
+            s,
             RECT {
-                left: s.px(12),
-                top: s.px(115),
-                right: s.px(15),
-                bottom: s.px(135),
-            },
-            ACCENT,
-        );
-        let mut r = RECT {
-            left: s.px(28),
-            top: s.px(104),
-            right: s.px(172),
-            bottom: s.px(146),
-        };
-        let old = SelectObject(dc, s.fonts[4]);
-        SetTextColor(dc, color(WHITE));
-        SetBkMode(dc, TRANSPARENT);
-        DrawTextW(
-            dc,
-            &mut "錄音工作台".encode_utf16().collect::<Vec<_>>(),
-            &mut r,
-            DT_SINGLELINE | DT_VCENTER,
-        );
-        SelectObject(dc, old);
-        for (y, t, c) in [
-            (158, "CAPTURE / CONVERT", LIGHT),
-            (224, "只留下你選的聲音", LIGHT),
-            (s.height - 76, "原生 Windows · v0.4", LIGHT),
-        ] {
-            let mut r = RECT {
-                left: s.px(24),
-                top: s.px(y),
+                left: s.px(28),
+                top: s.px(104),
                 right: s.px(172),
-                bottom: s.px(y + 28),
-            };
-            let old = SelectObject(dc, s.fonts[1]);
-            SetTextColor(dc, color(c));
-            DrawTextW(
+                bottom: s.px(146),
+            },
+            "錄音工作台",
+            4,
+            BRAND,
+        );
+        for (y, t) in [
+            (158, "CAPTURE / CONVERT"),
+            (224, "只留下你選的聲音"),
+            (s.height - 76, "原生 Windows · v0.5"),
+        ] {
+            text_box(
                 dc,
-                &mut t.encode_utf16().collect::<Vec<_>>(),
-                &mut r,
-                DT_SINGLELINE | DT_VCENTER,
+                s,
+                RECT {
+                    left: s.px(24),
+                    top: s.px(y),
+                    right: s.px(172),
+                    bottom: s.px(y + 28),
+                },
+                t,
+                1,
+                SIDE_MUTED,
             );
-            SelectObject(dc, old);
         }
     }
     label(
@@ -469,18 +523,18 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         MUTED,
         false,
     );
-    card(dc, s, Area::new(x + w - 176, 30, 176, 32), PALE, PALE);
+    pill(dc, s.rect(Area::new(x + w - 176, 30, 176, 32)), WELL);
     label(
         dc,
         s,
         Area::new(x + w - 162, 31, 152, 30),
         "WAV · 原始來源保留",
         1,
-        TEAL,
+        BRAND,
         false,
     );
     let a = l.source;
-    card(dc, s, a, WHITE, LINE);
+    card(dc, s, a, WHITE, SEP);
     label(
         dc,
         s,
@@ -490,6 +544,8 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         INK,
         false,
     );
+    // Segmented control track; the selected segment is a white capsule (see draw_button).
+    pill(dc, s.rect(Area::new(a.x + 20, a.y + 52, 304, 44)), WELL);
     if s.import {
         label(
             dc,
@@ -521,7 +577,7 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         );
     }
     let a = l.record;
-    card(dc, s, a, DARK, DARK);
+    card(dc, s, a, WHITE, SEP);
     let recording = matches!(s.job, Job::Recording | Job::Stopping);
     let title = match s.job {
         Job::Recording => "正在錄音",
@@ -539,33 +595,23 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
     } else {
         title
     };
-    let live_dot = s.job == Job::Recording && !s.error;
-    let title_x = if live_dot { 44 } else { 24 };
-    if live_dot {
-        dot(dc, s, Area::new(a.x + 24, a.y + 26, 12, 12), REC_DOT);
-    }
+    // Status capsule: red with a white dot while recording, neutral otherwise, red text on error.
+    let tone = if s.error {
+        (WELL, DANGER, None)
+    } else if s.job == Job::Recording {
+        (DANGER, WHITE, Some(WHITE))
+    } else {
+        (WELL, INK, None)
+    };
+    capsule(dc, s, (a.x + 24, a.y + 20), title, tone);
+    // Large light timer (Segoe UI Light, 56 px).
     label(
         dc,
         s,
-        Area::new(a.x + title_x, a.y + 18, a.w - title_x - 24, 28),
-        title,
-        4,
-        if s.error {
-            0xffb5a9
-        } else if recording {
-            0x86e8bf
-        } else {
-            WHITE
-        },
-        false,
-    );
-    label(
-        dc,
-        s,
-        Area::new(a.x + 22, a.y + 50, a.w - 44, 72),
+        Area::new(a.x + 20, a.y + 52, a.w - 40, 68),
         &clock(s.elapsed),
         3,
-        WHITE,
+        INK,
         false,
     );
     label(
@@ -577,14 +623,16 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
             s.bytes as f64 / 1e6
         ),
         1,
-        LIGHT,
+        MUTED,
         false,
     );
-    // Real level history: one bar per UI tick (about 12 s), newest at the right, dB scale.
-    let strip = Area::new(a.x + 24, a.y + 150, a.w - 48, 52);
+    // Real level history on a rounded well: one bar per UI tick, newest at the right, dB scale.
+    let well = Area::new(a.x + 24, a.y + 152, a.w - 48, 56);
+    round_rect(dc, s.rect(well), WELL, None, s.px(24));
+    let strip = Area::new(a.x + 36, a.y + 160, a.w - 72, 40);
     let sr = s.rect(strip);
     let (sw, sh) = (sr.right - sr.left, sr.bottom - sr.top);
-    let brushes = [LEVEL, AMBER, HOT].map(|c| CreateSolidBrush(color(c)));
+    let brushes = [METER_OK, METER_WARN, METER_CLIP].map(|c| CreateSolidBrush(color(c)));
     let old_brush = SelectObject(dc, brushes[0]);
     let old_pen = SelectObject(dc, GetStockObject(NULL_PEN));
     let gap = s.px(2).max(1);
@@ -599,8 +647,8 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         let x0 = sr.left + slot as i32 * sw / HISTORY as i32;
         let x1 = (sr.left + (slot as i32 + 1) * sw / HISTORY as i32 - gap).max(x0 + 1);
         let brush = match level_color(d) {
-            HOT => brushes[2],
-            AMBER => brushes[1],
+            METER_CLIP => brushes[2],
+            METER_WARN => brushes[1],
             _ => brushes[0],
         };
         SelectObject(dc, brush);
@@ -611,13 +659,14 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
     for b in brushes {
         let _ = DeleteObject(b);
     }
-    let meter = Area::new(a.x + 24, a.y + 208, a.w - 48, 8);
-    card(dc, s, meter, 0x36584c, 0x36584c);
+    // Level meter on a capsule well; fill and peak-hold marker are drawn over it.
+    let meter = Area::new(a.x + 24, a.y + 216, a.w - 48, 10);
+    pill(dc, s.rect(meter), WELL);
     let level = (db(s.peak) + 60.) / 60.;
     if recording && level > 0. {
         let mut on = meter;
         on.w = ((on.w as f32 * level) as i32).max(4);
-        card(dc, s, on, level_color(db(s.peak)), level_color(db(s.peak)));
+        pill(dc, s.rect(on), level_color(db(s.peak)));
     }
     // Peak-hold marker: highest interval peak since this recording started.
     if s.meter.hold > 0. {
@@ -625,21 +674,21 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         fill(
             dc,
             s.rect(Area::new(hx - 1, meter.y - 3, 2, meter.h + 6)),
-            WHITE,
+            PEAK,
         );
     }
-    let ty = a.y + 220;
-    tick(dc, s, Area::new(meter.x, ty, 40, 18), "-60", LIGHT, DT_LEFT);
+    let ty = a.y + 232;
+    tick(dc, s, Area::new(meter.x, ty, 40, 18), "-60", MUTED, DT_LEFT);
     for (d, t) in [(-40., "-40"), (-24., "-24"), (-12., "-12"), (-6., "-6")] {
         let cx = meter.x + db_pos(d, meter.w);
-        tick(dc, s, Area::new(cx - 20, ty, 40, 18), t, LIGHT, DT_CENTER);
+        tick(dc, s, Area::new(cx - 20, ty, 40, 18), t, MUTED, DT_CENTER);
     }
     tick(
         dc,
         s,
         Area::new(meter.x + meter.w - 40, ty, 40, 18),
         "0",
-        LIGHT,
+        MUTED,
         DT_RIGHT,
     );
     let meter_text = if !recording {
@@ -654,14 +703,14 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
     label(
         dc,
         s,
-        Area::new(a.x + 24, a.y + 242, a.w - 48, 22),
+        Area::new(a.x + 24, a.y + 252, a.w - 48, 20),
         &meter_text,
         1,
-        LIGHT,
+        MUTED,
         false,
     );
     let a = l.files;
-    card(dc, s, a, WHITE, LINE);
+    card(dc, s, a, WHITE, SEP);
     label(
         dc,
         s,
@@ -701,7 +750,7 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         );
     }
     let a = l.export;
-    card(dc, s, a, WHITE, LINE);
+    card(dc, s, a, WHITE, SEP);
     label(
         dc,
         s,
@@ -748,17 +797,17 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
         false,
     );
     let (message, c) = if s.job == Job::Converting && s.stop.load(Ordering::Relaxed) != 0 {
-        ("正在取消轉檔，原始來源保留…".into(), TEAL)
+        ("正在取消轉檔，原始來源保留…".into(), BRAND)
     } else if s.job == Job::Converting {
         (
             format!(
-                "● 編碼中 · 已經過 {} · 可取消，來源保留",
+                "編碼中 · 已經過 {} · 可取消，來源保留",
                 clock(s.started.elapsed().as_secs_f64())
             ),
-            TEAL,
+            BRAND,
         )
     } else {
-        (s.status.clone(), if s.error { ERROR } else { MUTED })
+        (s.status.clone(), if s.error { DANGER } else { MUTED })
     };
     label(
         dc,
@@ -792,7 +841,7 @@ unsafe fn paint(hwnd: HWND, dc: HDC, s: &State) {
             "非 bit-perfect 承諾 · 單分頁需擴充授權 · 非靜音捕捉仍待互動桌面驗收"
         },
         1,
-        if s.preview { ERROR } else { MUTED },
+        if s.preview { DANGER } else { MUTED },
         true,
     );
 }
@@ -848,7 +897,7 @@ unsafe fn reposition(hwnd: HWND, s: &mut State) {
     for (i, id) in [START, STOP, CANCEL].iter().enumerate() {
         s.rects.insert(
             *id,
-            Area::new(a.x + 24 + (bw + 8) * i as i32, a.y + 284, bw, 36),
+            Area::new(a.x + 24 + (bw + 8) * i as i32, a.y + 288, bw, 36),
         );
     }
     let a = l.files;
@@ -1159,21 +1208,40 @@ enum Style {
 /// Surface the button sits on, so rounded corners blend into their card.
 fn backdrop(id: usize) -> u32 {
     match id {
-        START | STOP | CANCEL => DARK,
+        APP | IMPORT_MODE => WELL,
         ENCODER | HELP | DEST => BG,
         _ => WHITE,
     }
 }
-/// (fill, border, text) colours for a style; `pressed` darkens the fill.
-fn button_colors(style: Style, pressed: bool, backdrop: u32) -> (u32, Option<u32>, u32) {
+/// (fill, text) colours for a style; `pressed` darkens the fill. Buttons are capsules without borders.
+fn button_colors(style: Style, pressed: bool, backdrop: u32) -> (u32, u32) {
     match style {
-        Style::Primary => (if pressed { 0x0f5a48 } else { TEAL }, Some(TEAL), WHITE),
-        Style::Danger => (if pressed { 0x8a2f2a } else { ERROR }, Some(ERROR), WHITE),
-        Style::Secondary => (if pressed { PALE } else { WHITE }, Some(LINE), INK),
-        Style::Selected => (if pressed { 0xd2e8df } else { PALE }, Some(TEAL), TEAL),
-        Style::Ghost => (if pressed { PALE } else { backdrop }, None, TEAL),
-        Style::Disabled => (0xeef3f1, Some(LINE), 0x8a9a94),
+        Style::Primary => (if pressed { 0x0f5a48 } else { BRAND }, WHITE),
+        Style::Danger => (if pressed { 0x9e1016 } else { DANGER }, WHITE),
+        Style::Secondary => (if pressed { 0xdadae0 } else { WELL }, INK),
+        Style::Selected => (if pressed { BG } else { WHITE }, BRAND),
+        Style::Ghost => (if pressed { WELL } else { backdrop }, BRAND),
+        Style::Disabled => (WELL, DISABLED),
     }
+}
+/// Rounded focus outline inside `c`; `inset` is the outline's outer offset, `width` its pen width.
+unsafe fn focus_ring(dc: HDC, c: RECT, inset: i32, rgb: u32, width: i32) {
+    let pen = CreatePen(PS_SOLID, width, color(rgb));
+    let ob = SelectObject(dc, GetStockObject(NULL_BRUSH));
+    let op = SelectObject(dc, pen);
+    let d = c.bottom - c.top - 2 * inset;
+    let _ = RoundRect(
+        dc,
+        c.left + inset,
+        c.top + inset,
+        c.right - inset,
+        c.bottom - inset,
+        d,
+        d,
+    );
+    SelectObject(dc, ob);
+    SelectObject(dc, op);
+    let _ = DeleteObject(pen);
 }
 unsafe fn draw_button(s: &State, d: &DRAWITEMSTRUCT) {
     let id = d.CtlID as usize;
@@ -1192,21 +1260,21 @@ unsafe fn draw_button(s: &State, d: &DRAWITEMSTRUCT) {
         Style::Primary
     } else if selected {
         Style::Selected
-    } else if matches!(id, HELP | DETAILS | ENCODER | REFRESH) {
+    } else if matches!(id, HELP | DETAILS | ENCODER | REFRESH | APP | IMPORT_MODE) {
         Style::Ghost
     } else {
         Style::Secondary
     };
     let back = backdrop(id);
-    let (bg, border, fg) = button_colors(style, pressed, back);
-    let radius = s.px(16);
-    // Clear the square corners with the card colour before drawing the rounded face.
-    fill(d.hDC, d.rcItem, back);
-    round_rect(d.hDC, d.rcItem, bg, border, radius);
+    let (bg, fg) = button_colors(style, pressed, back);
+    let c = d.rcItem;
+    // Clear the square corners with the surface colour before drawing the capsule face.
+    fill(d.hDC, c, back);
+    round_rect(d.hDC, c, bg, None, c.bottom - c.top);
     let old = SelectObject(d.hDC, s.fonts[if style == Style::Primary { 4 } else { 0 }]);
     SetBkMode(d.hDC, TRANSPARENT);
     SetTextColor(d.hDC, color(fg));
-    let mut r = d.rcItem;
+    let mut r = c;
     let mut t = text(d.hwndItem).encode_utf16().collect::<Vec<_>>();
     DrawTextW(
         d.hDC,
@@ -1216,24 +1284,13 @@ unsafe fn draw_button(s: &State, d: &DRAWITEMSTRUCT) {
     );
     SelectObject(d.hDC, old);
     if focus {
-        // Amber focus ring, inset so it stays inside the button face.
-        let inset = s.px(3);
-        let ring = CreatePen(PS_SOLID, s.px(2).max(1), color(AMBER));
-        let ob = SelectObject(d.hDC, GetStockObject(NULL_BRUSH));
-        let op = SelectObject(d.hDC, ring);
-        let c = d.rcItem;
-        let _ = RoundRect(
-            d.hDC,
-            c.left + inset,
-            c.top + inset,
-            c.right - inset,
-            c.bottom - inset,
-            radius,
-            radius,
-        );
-        SelectObject(d.hDC, ob);
-        SelectObject(d.hDC, op);
-        let _ = DeleteObject(ring);
+        // 2px brand focus ring on the edge. Brand/red faces cannot show a brand ring on themselves,
+        // so they also get a 2px white inner ring.
+        let width = s.px(2).max(1);
+        focus_ring(d.hDC, c, s.px(1), BRAND, width);
+        if matches!(style, Style::Primary | Style::Danger) {
+            focus_ring(d.hDC, c, s.px(4), WHITE, width);
+        }
     }
 }
 unsafe fn init(hwnd: HWND) -> State {
@@ -1745,9 +1802,9 @@ mod tests {
         assert_eq!(db_pos(-30., 100), 50);
         assert_eq!(db_pos(-90., 100), 0);
         assert_eq!(db_pos(db(0.), 52), 0, "silence draws no bar");
-        assert_eq!(level_color(-20.), LEVEL);
-        assert_eq!(level_color(-6.), AMBER);
-        assert_eq!(level_color(0.), HOT);
+        assert_eq!(level_color(-20.), METER_OK);
+        assert_eq!(level_color(-6.), METER_WARN);
+        assert_eq!(level_color(0.), METER_CLIP);
     }
     #[test]
     fn layout_keeps_record_card_and_export_apart() {

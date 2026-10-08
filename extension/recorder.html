@@ -7,12 +7,14 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-state="idle">
-<main>
-  <header class="top">
+<header class="top">
+  <div class="top-inner">
     <span class="brand">Clear Audio</span>
     <span class="badge">分頁音訊 → WAV</span>
-  </header>
+  </div>
+</header>
 
+<main>
   <h1>保留這個分頁的聲音</h1>
   <p class="intro">先確認來源，再開始錄音。完成後用 Rust App 另存 MP3，保留 WAV 原檔。</p>
 
@@ -23,7 +25,7 @@
     <p class="hint">來源是你點擊擴充圖示時的分頁；切換前景分頁不會改變它。換來源請回到該分頁重新點擊擴充。</p>
   </section>
 
-  <section class="record" aria-labelledby="state">
+  <section class="card record" aria-labelledby="state">
     <div class="record-head">
       <h2 id="state">準備錄音</h2>
       <span id="pill" class="pill">待命</span>
@@ -39,7 +41,9 @@
       <div class="tile"><dt>取樣率</dt><dd><span id="rate">—</span></dd></div>
     </dl>
 
-    <canvas id="history" width="720" height="144" role="img" aria-label="近 30 秒實際峰值歷史"></canvas>
+    <div class="well">
+      <canvas id="history" width="720" height="144" role="img" aria-label="近 30 秒實際峰值歷史"></canvas>
+    </div>
 
     <div class="meter-block">
       <meter id="peak" min="0" max="1" value="0" low="0.9" high="0.999" optimum="0" aria-label="實際音訊峰值"></meter>
@@ -56,10 +60,10 @@
 
     <div class="buttons">
       <button id="start" class="btn btn-primary" aria-keyshortcuts="Alt+R">選擇 WAV 並開始</button>
-      <button id="stop" class="btn btn-secondary" aria-keyshortcuts="Alt+S" disabled>停止並保存</button>
-      <button id="cancel" class="btn btn-ghost" aria-keyshortcuts="Alt+X" disabled>取消並丟棄</button>
+      <button id="stop" class="btn btn-danger" aria-keyshortcuts="Alt+S" disabled>停止並保存</button>
+      <button id="cancel" class="btn btn-secondary" aria-keyshortcuts="Alt+X" disabled>取消並丟棄</button>
     </div>
-    <p class="shortcuts"><kbd>Alt</kbd>+<kbd>R</kbd> 開始 · <kbd>Alt</kbd>+<kbd>S</kbd> 停止保存 · <kbd>Alt</kbd>+<kbd>X</kbd> 取消</p>
+    <p class="shortcuts"><span class="key"><kbd>Alt</kbd>+<kbd>R</kbd> 開始</span><span class="key"><kbd>Alt</kbd>+<kbd>S</kbd> 停止保存</span><span class="key"><kbd>Alt</kbd>+<kbd>X</kbd> 取消</span></p>
   </section>
 
   <section class="card result" aria-labelledby="result-label">
