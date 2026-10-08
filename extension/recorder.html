@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Clear Audio · 分頁錄音</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-state="idle">
+<main>
+  <header class="top">
+    <span class="brand">Clear Audio</span>
+    <span class="badge">分頁音訊 → WAV</span>
+  </header>
+
+  <h1>保留這個分頁的聲音</h1>
+  <p class="intro">先確認來源，再開始錄音。完成後用 Rust App 另存 MP3，保留 WAV 原檔。</p>
+
+  <section class="card source" aria-labelledby="source-label">
+    <h2 id="source-label">01　錄音來源</h2>
+    <strong id="target">尚未選擇分頁</strong>
+    <p id="origin"></p>
+    <p class="hint">來源是你點擊擴充圖示時的分頁；切換前景分頁不會改變它。換來源請回到該分頁重新點擊擴充。</p>
+  </section>
+
+  <section class="record" aria-labelledby="state">
+    <div class="record-head">
+      <h2 id="state">準備錄音</h2>
+      <span id="pill" class="pill">待命</span>
+    </div>
+
+    <div id="elapsed" class="clock">00:00.0</div>
+    <p id="format">等待來源 · 不錄麥克風</p>
+
+    <dl class="tiles">
+      <div class="tile"><dt>峰值保持</dt><dd><span id="peakhold">—</span></dd></div>
+      <div class="tile"><dt>削波次數</dt><dd><span id="clips">0</span></dd></div>
+      <div class="tile"><dt>檔案大小</dt><dd><span id="size">0.00 MB</span></dd></div>
+      <div class="tile"><dt>取樣率</dt><dd><span id="rate">—</span></dd></div>
+    </dl>
+
+    <canvas id="history" width="720" height="144" role="img" aria-label="近 30 秒實際峰值歷史"></canvas>
+
+    <div class="meter-block">
+      <meter id="peak" min="0" max="1" value="0" low="0.9" high="0.999" optimum="0" aria-label="實際音訊峰值"></meter>
+      <div class="scale" aria-hidden="true">
+        <span class="s-60">-60</span>
+        <span class="s-40">-40</span>
+        <span class="s-24">-24</span>
+        <span class="s-12">-12</span>
+        <span class="s-6">-6</span>
+        <span class="s-0">0</span>
+      </div>
+    </div>
+    <p id="level" class="level">音量計待命</p>
+
+    <div class="buttons">
+      <button id="start" class="btn btn-primary" aria-keyshortcuts="Alt+R">選擇 WAV 並開始</button>
+      <button id="stop" class="btn btn-secondary" aria-keyshortcuts="Alt+S" disabled>停止並保存</button>
+      <button id="cancel" class="btn btn-ghost" aria-keyshortcuts="Alt+X" disabled>取消並丟棄</button>
+    </div>
+    <p class="shortcuts"><kbd>Alt</kbd>+<kbd>R</kbd> 開始 · <kbd>Alt</kbd>+<kbd>S</kbd> 停止保存 · <kbd>Alt</kbd>+<kbd>X</kbd> 取消</p>
+  </section>
+
+  <section class="card result" aria-labelledby="result-label">
+    <h2 id="result-label">02　檔案與結果</h2>
+    <p id="filename">尚未選擇檔案</p>
+    <p id="status" role="status" aria-live="polite">請只錄製你有權保存的音訊。</p>
+
+    <div class="recent">
+      <h3>本次已保存</h3>
+      <ol id="recent"></ol>
+      <p id="recent-empty">尚無保存的錄音</p>
+    </div>
+
+    <p class="hint">建議檔名含 UTC 時間，已有內容的檔案會拒絕寫入。取消會丟棄本次寫入，但選檔器建立的空檔可能保留。</p>
+  </section>
+
+  <footer>請保持控制台開啟；來源關閉會嘗試停止保存。WAV 無額外有損編碼，不承諾 bit-perfect。擴充尚待真實授權驗收。</footer>
+</main>
+<script type="module" src="recorder.js"></script>
+</body>
+</html>

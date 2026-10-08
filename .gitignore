@@ -1,0 +1,5 @@
+/target/
+/dist/
+/test-output/
+*.partial
+/.claude/

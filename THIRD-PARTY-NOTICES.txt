@@ -1,0 +1,38 @@
+Clear Audio uses the windows-rs libraries (windows, windows-core,
+windows-result, windows-strings, windows-targets and Windows target bindings).
+Source: https://github.com/microsoft/windows-rs
+Used under the MIT license option:
+
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+FFmpeg is an optional external executable selected by the user. It is not
+included in this distribution. Its licensing depends on the chosen build.
+
+The browser extension bundles lamejs 1.2.1 (extension/vendor/lame.min.js),
+a JavaScript port of the LAME MP3 encoder, unmodified, as a separate file.
+Source: https://github.com/zhuker/lamejs (npm: lamejs@1.2.1)
+SHA-256: 15d285e2587b3bdbfd18a68de6ce07cc074f7480a82c3815da2dc1c348ec6df4
+License: GNU Lesser General Public License v3.0; license texts in
+extension/vendor/LGPL-3.0.txt and GPL-3.0.txt; LAME notes in
+extension/vendor/LAMEJS-LICENSE.txt. You may replace vendor/lame.min.js with
+any compatible build. MP3 is a lossy format; recordings are re-encoded.

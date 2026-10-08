@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clear Audio</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body data-mode="idle">
+<main class="panel">
+  <header class="top">
+    <h1 class="brand">Clear Audio</h1>
+    <p id="state" class="pill" role="status" aria-live="polite" data-tone="idle">待命</p>
+  </header>
+
+  <section id="last-section" class="card saved" hidden aria-label="已存檔">
+    <p class="label" id="last-folder">已存到 下載/ClearAudio/</p>
+    <strong id="last-filename" class="filename"></strong>
+    <p class="meta"><span id="last-duration"></span><span id="last-size"></span></p>
+    <button id="show" class="btn btn-secondary" type="button">在資料夾中顯示</button>
+  </section>
+
+  <section id="idle-section" class="section">
+    <div class="card source">
+      <p class="label">目前分頁</p>
+      <strong id="source-title" class="source-title">—</strong>
+      <p id="source-origin" class="origin"></p>
+      <p id="source-warning" class="warn" hidden></p>
+    </div>
+
+    <fieldset id="quality-section" class="quality">
+      <legend>音質（kbps）</legend>
+      <div class="segmented">
+        <input type="radio" name="kbps" id="kbps-128" value="128">
+        <label for="kbps-128">MP3 128</label>
+        <input type="radio" name="kbps" id="kbps-192" value="192">
+        <label for="kbps-192">MP3 192</label>
+        <input type="radio" name="kbps" id="kbps-320" value="320">
+        <label for="kbps-320">MP3 320</label>
+      </div>
+    </fieldset>
+
+    <button id="start" class="btn btn-primary btn-big" type="button" autofocus>● 錄成 MP3</button>
+    <p id="hint" class="hint"></p>
+  </section>
+
+  <section id="error-section" class="card error" hidden aria-label="錯誤">
+    <p id="error-message" class="error-message"></p>
+    <p id="error-guidance" class="error-guidance"></p>
+  </section>
+
+  <section id="recording-section" class="record" hidden aria-label="錄音中">
+    <p id="rec-title" class="rec-title"></p>
+    <div id="clock" class="clock" aria-live="off">00:00</div>
+    <meter id="meter" min="0" max="1" value="0" aria-label="即時音量"></meter>
+    <dl class="tiles">
+      <div class="tile"><dt>檔案大小</dt><dd id="stat-size">—</dd></div>
+      <div class="tile"><dt>峰值保持</dt><dd id="stat-peak">—</dd></div>
+      <div class="tile"><dt>位元率</dt><dd id="stat-bitrate">—</dd></div>
+    </dl>
+    <button id="stop" class="btn btn-danger btn-big" type="button">■ 停止並存 MP3</button>
+    <button id="cancel" class="btn btn-ghost" type="button">取消（不保存）</button>
+  </section>
+
+  <section id="saving-section" class="card saving" hidden aria-label="存檔中">
+    <p id="saving-text" role="status">正在存檔…</p>
+  </section>
+
+  <footer>
+    <button id="wav" class="link" type="button">進階：錄成無損 WAV</button>
+  </footer>
+</main>
+<script type="module" src="popup.js"></script>
+</body>
+</html>
