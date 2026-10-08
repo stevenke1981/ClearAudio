@@ -31,7 +31,8 @@
   --rec: #ff6b5e;
   --rec-soft: rgba(255, 107, 94, 0.16);
   --amber: #e5bc62;
-  --focus: #e5bc62;
+  /* focus ring on page surfaces (light): deep amber, 5.4:1 on --bg. Dark theme overrides below. */
+  --focus: #8a5a00;
 
   /* real-peak history bars (read by recorder.js) */
   --meter-ok: #65cfac;
@@ -172,6 +173,7 @@ header.top {
 
 /* ---------- Recorder panel ---------- */
 .record {
+  --focus: var(--amber); /* panel is always dark: bright amber ring, 6.9:1 on --panel */
   margin: 16px 0;
   padding: 24px;
   color: var(--panel-text);

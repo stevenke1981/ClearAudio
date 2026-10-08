@@ -27,9 +27,13 @@
   --danger: #b3261e;
   --danger-hover: #991f18;
   --danger-ink: #ffffff;
+  --brand-ink: #ffffff; /* text on --brand buttons */
   --rec: #ff6b5e;
   --rec-soft: rgba(255, 107, 94, 0.16);
-  --focus: #e5bc62;
+  --rec-text: #b3261e; /* recording status text on the light page (pill sits on a tinted light bg) */
+  --amber: #e5bc62;
+  /* focus ring on page surfaces (light): deep amber, 5.4:1 on --bg. Dark theme overrides below. */
+  --focus: #8a5a00;
 
   --r-lg: 16px;
   --r-md: 12px;
@@ -56,7 +60,10 @@
     --danger: #ff8a80;
     --danger-hover: #ffa39c;
     --danger-ink: #2a0a08;
+    --brand-ink: #0b2620; /* dark-mode brand is light green: dark text */
+    --rec-text: #ffd5cf;
     --rec-soft: rgba(255, 107, 94, 0.2);
+    --focus: #f2cc73;
 
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
@@ -167,7 +174,7 @@ legend {
 }
 
 .pill[data-tone="rec"] {
-  color: #ffd5cf;
+  color: var(--rec-text);
   background: var(--rec-soft);
   border-color: rgba(255, 107, 94, 0.55);
 }
@@ -367,7 +374,7 @@ legend {
 
 .btn-secondary {
   background: var(--brand);
-  color: #ffffff;
+  color: var(--brand-ink);
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -440,6 +447,7 @@ footer {
 
 /* ---------- Recording panel (always deep green) ---------- */
 .record {
+  --focus: var(--amber); /* panel is always dark: bright amber ring */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -499,7 +507,7 @@ meter::-webkit-meter-optimum-value {
 meter::-webkit-meter-suboptimum-value {
   height: 100%;
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, var(--focus) 0 8px, transparent 8px 10px);
+  background: repeating-linear-gradient(90deg, var(--amber) 0 8px, transparent 8px 10px);
 }
 
 meter::-webkit-meter-even-less-good-value {
@@ -514,7 +522,7 @@ meter::-moz-meter-bar {
 }
 
 meter:-moz-meter-sub-optimum::-moz-meter-bar {
-  background: repeating-linear-gradient(90deg, var(--focus) 0 8px, transparent 8px 10px);
+  background: repeating-linear-gradient(90deg, var(--amber) 0 8px, transparent 8px 10px);
 }
 
 meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
