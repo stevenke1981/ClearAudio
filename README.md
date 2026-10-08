@@ -70,4 +70,4 @@ node --test extension/*.test.js
 - [Chrome tabCapture：明示授權、targetTabId、consumerTabId](https://developer.chrome.com/docs/extensions/reference/api/tabCapture)
 - [File System Access 寫入提交機制](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createWritable)
 
-第三方授權見 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)。不包含 FFmpeg、瀏覽器、音訊成品或私人 credentials。
+本專案程式碼以 [MIT](LICENSE) 授權。內附的 `extension/vendor/lame.min.js`（lamejs）維持其 LGPL-3.0 授權，其他第三方授權見 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)。不包含 FFmpeg、瀏覽器、音訊成品或私人 credentials。
