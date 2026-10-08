@@ -213,13 +213,13 @@ async function onFinished(m) {
     await revokeAndClose(m.url);
     return;
   }
-  const {title, origin, kbps} = status;
+  const {title, origin, kbps, songTitle} = status;
   const seconds = finiteOr0(m.seconds), bytes = finiteOr0(m.bytes);
   // Whole-recording peak below about -80 dBFS: the file is still saved, but the panel warns.
   const silent = !(finiteOr0(m.peakHold) >= SILENT_PEAK);
   status = {state: 'saving', title, origin, kbps, seconds, bytes};
   await setRecordingBadge(false);
-  const filename = 'ClearAudio/' + mp3FileStem(title, new Date()) + '.mp3';
+  const filename = 'ClearAudio/' + mp3FileStem(title, new Date(), {song: !!songTitle}) + '.mp3';
   let downloadId;
   try {
     downloadId = await chrome.downloads.download({url: m.url, filename, conflictAction: 'uniquify', saveAs: false});

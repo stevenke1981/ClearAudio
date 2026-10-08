@@ -403,7 +403,7 @@ test('media title and artist name the recording when the page exposes metadata',
   assert.equal(start.title, 'Midnight Sky');
   assert.equal(start.artist, 'Suno AI');
   const {download} = await finishWith();
-  assert.match(download.filename, /^ClearAudio\/Midnight Sky - Suno AI-\d{8}-\d{6}\.mp3$/);
+  assert.match(download.filename, /^ClearAudio\/Midnight Sky - Suno AI\.mp3$/);
   assert.equal((await popup({type: 'mp3-status'})).last.filename, download.filename);
   mediaResult = null;
 });
@@ -492,7 +492,7 @@ test('a media title learned only at stop is passed to offscreen and used for the
   assert.equal(stop.artist, 'Late Artist');
   assert.equal((await popup({type: 'mp3-status'})).title, 'Late Song - Late Artist');
   const {download} = await finishWith();
-  assert.match(download.filename, /^ClearAudio\/Late Song - Late Artist-/);
+  assert.match(download.filename, /^ClearAudio\/Late Song - Late Artist\.mp3$/);
   mediaResult = null;
 });
 
@@ -502,7 +502,7 @@ test('a media title learned only after the track ends is used for the filename',
   await startRecording({title: 'Suno | AI Music'});
   mediaResult = {title: 'Ended Song', artist: '', album: ''};
   const {download} = await finishWith();
-  assert.match(download.filename, /^ClearAudio\/Ended Song-/);
+  assert.match(download.filename, /^ClearAudio\/Ended Song\.mp3$/);
   mediaResult = null;
 });
 

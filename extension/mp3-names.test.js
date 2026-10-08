@@ -42,3 +42,10 @@ test('title is capped at 70 characters', () => {
 test('default date is the current local time', () => {
   assert.match(mp3FileStem('t'), /^t-\d{8}-\d{6}$/);
 });
+
+test('a media-session song title becomes the whole name, without timestamp or suffix stripping', () => {
+  assert.equal(mp3FileStem('黃昏磁帶 - stevenke1981', D, {song: true}), '黃昏磁帶 - stevenke1981');
+  assert.equal(mp3FileStem('A | B', D, {song: true}), 'A _ B');
+  assert.equal(mp3FileStem('a/b:c', D, {song: true}), 'a_b_c');
+  assert.equal(mp3FileStem('  ', D, {song: true}), 'tab-audio-20260102-030405');
+});

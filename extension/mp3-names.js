@@ -25,7 +25,10 @@ function localStamp(date) {
 }
 
 // Returns '<title>-<YYYYMMDD-HHMMSS>' (local time), without extension; saved under Downloads/ClearAudio/.
-export function mp3FileStem(title, date = new Date()) {
-  const stem = cleanTitle(stripSiteSuffix(String(title ?? '').normalize('NFC').trim())) || 'tab-audio';
-  return `${stem}-${localStamp(date)}`;
+export function mp3FileStem(title, date = new Date(), {song = false} = {}) {
+  // A real song title (from the page's media session) is used as-is: no site-suffix stripping, no timestamp;
+  // the downloads API uniquifies duplicates. A tab-title fallback keeps the timestamp to stay distinguishable.
+  const raw = String(title ?? '').normalize('NFC').trim();
+  const stem = cleanTitle(song ? raw : stripSiteSuffix(raw)) || 'tab-audio';
+  return song && stem !== 'tab-audio' ? stem : `${stem}-${localStamp(date)}`;
 }
