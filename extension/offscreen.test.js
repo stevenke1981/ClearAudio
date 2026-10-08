@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRecorder} from './offscreen.js';
-import {id3v2Title} from './mp3.js';
+import {id3v2Title, id3v2Tags} from './mp3.js';
 
 // Fake lamejs encoder: returns 10 bytes per encodeBuffer call, 5 on flush.
 class FakeEncoder {
@@ -174,6 +174,44 @@ test('stop drains worklet, finishes encoder and reports finished with blob url a
   assert.ok(env.cleared.includes(7));
   assert.equal(env.recorder.active, false);
   assert.equal(env.sent.filter(m => m.type === 'error').length, 0);
+});
+
+test('finished reports peakHold, the loudest sample of the whole recording', async () => {
+  const env = makeEnv();
+  await env.handle({type: 'start', streamId: 'sid', kbps: 128});
+  env.pcm([0.2, -0.6]);
+  env.tick(); // interval peak resets, but peakHold must survive into finished
+  env.pcm([0.1, 0.05]);
+  await env.handle({type: 'stop'});
+  await env.settle();
+  const finished = env.sent.find(m => m.type === 'finished');
+  assert.ok(Math.abs(finished.peakHold - 0.6) < 1e-6, String(finished.peakHold)); // Float32 sample
+});
+
+test('a silent recording reports peakHold 0 in finished and still produces a file', async () => {
+  const env = makeEnv();
+  await env.handle({type: 'start', streamId: 'sid', kbps: 128});
+  env.pcm(new Float32Array(1152 * 2)); // all zeros
+  await env.handle({type: 'stop'});
+  await env.settle();
+  const finished = env.sent.find(m => m.type === 'finished');
+  assert.equal(finished.peakHold, 0);
+  assert.ok(finished.bytes > 0);
+  assert.equal(env.created.length, 1);
+});
+
+test('artist from start is written as TPE1 and a stop override replaces title and artist', async () => {
+  const env = makeEnv();
+  await env.handle({type: 'start', streamId: 'sid', kbps: 128, title: 'Tab title', artist: ''});
+  await env.handle({type: 'stop', title: 'Real Song', artist: 'Real Artist'});
+  await env.settle();
+  assert.deepEqual(Buffer.from(env.created[0].parts[0]), Buffer.from(id3v2Tags({title: 'Real Song', artist: 'Real Artist'})));
+
+  const env2 = makeEnv();
+  await env2.handle({type: 'start', streamId: 'sid', kbps: 128, title: 'Tab title', artist: 'Band'});
+  await env2.handle({type: 'stop'});
+  await env2.settle();
+  assert.deepEqual(Buffer.from(env2.created[0].parts[0]), Buffer.from(id3v2Tags({title: 'Tab title', artist: 'Band'})));
 });
 
 test('finished without a title carries no ID3 tag part content', async () => {

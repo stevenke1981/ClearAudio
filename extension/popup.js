@@ -10,6 +10,7 @@ export const NOT_RECORDABLE = '此頁面無法錄音，請在播放音樂的網�
 export const SAVE_FOLDER = '下載/ClearAudio/';
 export const HINT = '播放中的聲音會被錄下，關閉此面板仍會繼續錄音。快捷鍵 Alt+Shift+R';
 const UNKNOWN_ERROR = '發生未知錯誤';
+export const SILENT_WARNING = '⚠ 這段錄音全程無聲，可能錄音時沒有在播放。';
 const GUIDANCE = '請確認此分頁正在播放聲音，然後再試一次。若仍失敗，可改用進階 WAV。';
 
 // ---------- 音質偏好（localStorage 包 try/catch；被封鎖時退回預設值） ----------
@@ -107,6 +108,7 @@ export function view(status, activeTab, prefs = {}) {
           duration: formatClock(s.last.seconds),
           size: formatMegabytes(s.last.bytes),
           folder: SAVE_FOLDER,
+          warning: s.last.silent === true ? SILENT_WARNING : '',
         }
       : null,
     recording: {
@@ -181,6 +183,8 @@ export function render(v, doc) {
     setText('last-duration', `長度 ${v.last.duration}`);
     setText('last-size', v.last.size);
     setText('last-folder', `已存到 ${v.last.folder}`);
+    setText('last-warning', v.last.warning);
+    setHidden('last-warning', !v.last.warning);
   }
 
   setText('rec-title', v.recording.title);

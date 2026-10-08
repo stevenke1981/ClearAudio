@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {floatToInt16, deinterleave, Mp3Stream, id3v2Title, MP3_LIMIT} from './mp3.js';
+import {floatToInt16, deinterleave, Mp3Stream, id3v2Title, id3v2Tags, MP3_LIMIT} from './mp3.js';
 
 // Load the real vendored lamejs (classic script defining global `lamejs`) into a vm context.
 const lameSource = readFileSync(fileURLToPath(new URL('./vendor/lame.min.js', import.meta.url)), 'utf8');
@@ -148,5 +148,69 @@ test('id3v2Title encodes non-ASCII titles as UTF-16LE and trims blank titles to 
   assert.ok(id3v2Title('   ') instanceof Uint8Array);
   assert.equal(id3v2Title('   ').length, 0);
   assert.equal(id3v2Title(undefined).length, 0);
+});
+
+// Parses the frames of an ID3v2.3 tag produced by id3v2Tags: [{id, body}] with plain 32-bit sizes.
+function parseFrames(tag) {
+  const frames = [];
+  const size = ((tag[6] & 0x7f) << 21) | ((tag[7] & 0x7f) << 14) | ((tag[8] & 0x7f) << 7) | (tag[9] & 0x7f);
+  let o = 10;
+  while (o < 10 + size) {
+    const id = Buffer.from(tag.slice(o, o + 4)).toString('latin1');
+    const len = (tag[o + 4] << 24 >>> 0) + (tag[o + 5] << 16) + (tag[o + 6] << 8) + tag[o + 7];
+    frames.push({id, body: Buffer.from(tag.slice(o + 10, o + 10 + len))});
+    o += 10 + len;
+  }
+  assert.equal(o, 10 + size, 'frames must exactly fill the synchsafe tag size');
+  return frames;
+}
+
+test('id3v2Tags writes TIT2 and TPE1 frames with UTF-16 BOM bodies and correct sizes', () => {
+  const tag = id3v2Tags({title: '夜空', artist: 'Suno'});
+  assert.deepEqual(Array.from(tag.slice(0, 5)), [0x49, 0x44, 0x33, 3, 0]);
+  const frames = parseFrames(tag);
+  assert.deepEqual(frames.map(f => f.id), ['TIT2', 'TPE1']);
+  // TIT2: body = 3 (encoding + BOM) + 2 code units * 2 bytes = 7; frame = 17.
+  assert.equal(frames[0].body.length, 7);
+  assert.deepEqual(Array.from(frames[0].body.subarray(0, 3)), [0x01, 0xff, 0xfe]);
+  assert.equal(frames[0].body.subarray(3).toString('utf16le'), '夜空');
+  // TPE1: body = 3 + 4 code units * 2 = 11; frame = 21.
+  assert.equal(frames[1].body.length, 11);
+  assert.deepEqual(Array.from(frames[1].body.subarray(0, 3)), [0x01, 0xff, 0xfe]);
+  assert.equal(frames[1].body.subarray(3).toString('utf16le'), 'Suno');
+  // Synchsafe tag size = 17 + 21 = 38.
+  assert.equal(tag.length, 10 + 38);
+  assert.deepEqual(Array.from(tag.slice(6, 10)), [0, 0, 0, 38]);
+});
+
+test('id3v2Tags omits blank fields and returns empty when both are blank', () => {
+  assert.deepEqual(parseFrames(id3v2Tags({title: 'Only'})).map(f => f.id), ['TIT2']);
+  assert.deepEqual(parseFrames(id3v2Tags({artist: 'Only'})).map(f => f.id), ['TPE1']);
+  assert.equal(id3v2Tags({title: '  ', artist: ''}).length, 0);
+  assert.equal(id3v2Tags().length, 0);
+});
+
+test('id3v2Tags with title only is byte-identical to id3v2Title', () => {
+  assert.deepEqual(Buffer.from(id3v2Tags({title: 'Hi'})), Buffer.from(id3v2Title('Hi')));
+});
+
+test('id3v2Tags uses synchsafe sizes when the combined frames exceed 127 bytes', () => {
+  const tag = id3v2Tags({title: 'x'.repeat(100), artist: 'y'.repeat(100)});
+  // TIT2 frame = 10 + 3 + 200 = 213; TPE1 frame = 213; total 426 -> synchsafe.
+  const total = 426;
+  assert.deepEqual(Array.from(tag.slice(6, 10)), [0, 0, total >> 7, total & 0x7f]);
+  assert.equal(tag.length, 10 + total);
+  assert.equal(parseFrames(tag).length, 2);
+});
+
+test('real lamejs output follows an ID3 tag with TIT2 and TPE1 when prepended', () => {
+  const stream = new Mp3Stream(lame, RATE, 128);
+  stream.push(sine(0.3));
+  const audio = concat(stream.finish());
+  const tag = id3v2Tags({title: 'Song', artist: 'Artist'});
+  const file = concat([tag, audio]);
+  assert.equal(file[0], 0x49);
+  assert.equal(file[tag.length], 0xff);
+  assert.deepEqual(parseFrames(file.subarray(0, tag.length)).map(f => f.id), ['TIT2', 'TPE1']);
 });
 

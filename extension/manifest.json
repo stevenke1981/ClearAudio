@@ -4,7 +4,7 @@
   "version": "0.4.0",
   "minimum_chrome_version": "116",
   "description": "一鍵錄成 MP3：只錄經點擊授權的分頁音訊並存檔（另含 WAV 控制台）。不錄麥克風、不連網。",
-  "permissions": ["activeTab", "tabCapture", "offscreen", "downloads"],
+  "permissions": ["activeTab", "tabCapture", "offscreen", "downloads", "scripting"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "將此分頁錄成 MP3"

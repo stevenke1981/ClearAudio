@@ -26,11 +26,11 @@ Chrome / Edge PID **不是單一分頁**，程序樹可能包含其他分頁。�
 
 ## 分頁錄音：一鍵 MP3
 
-需使用者同意後自行安裝：在 Chrome / Edge 擴充管理頁開啟開發人員模式，載入 `extension`。權限 `activeTab`、`tabCapture`、`offscreen`、`downloads`；無網站存取權、native messaging、登錄檔修改、localhost 服務或音訊上傳。Chrome 116+／相容 Edge。
+需使用者同意後自行安裝：在 Chrome / Edge 擴充管理頁開啟開發人員模式，載入 `extension`。權限 `activeTab`、`tabCapture`、`offscreen`、`downloads`、`scripting`（只在你點擊後讀取該分頁的媒體資訊 navigator.mediaSession，以取得歌名／演出者）；無網站存取權、native messaging、登錄檔修改、localhost 服務或音訊上傳。Chrome 116+／相容 Edge。
 
 1. 在正在播放的分頁點擴充圖示，面板顯示來源標題與 origin；選 MP3 128／192／320 kbps（記住上次選擇）。
 2. 按「● 錄成 MP3」（或 Alt+Shift+R 直接開始／停止）。可關閉面板，錄音在背景 offscreen 頁持續；圖示顯示 REC；你仍聽得到分頁聲音。
-3. 再開面板按「■ 停止並存 MP3」，檔案自動存到「下載/ClearAudio/<標題>-<時間>.mp3」（含 ID3 標題），可「在資料夾中顯示」。來源分頁關閉會自動停止並保存；「取消（不保存）」丟棄。
+3. 再開面板按「■ 停止並存 MP3」，檔案自動存到「下載/ClearAudio/<歌名> - <演出者>-<時間>.mp3」（網站未提供媒體資訊時用分頁標題；寫入 ID3 標題／演出者）。全程無聲的錄音仍會保存，但面板會提醒，可「在資料夾中顯示」。來源分頁關閉會自動停止並保存；「取消（不保存）」丟棄。
 4. MP3 為錄下的聲音再編碼（有損），非網站原檔。自己在 Suno 等服務生成的歌，優先用該服務的官方下載取得原檔。本擴充不抓網站串流檔、不繞過下載限制。
 
 ## 分頁錄音：無損 WAV（進階）

@@ -1,5 +1,13 @@
 # 驗證記錄
 
+## 2026-10-08 一鍵 MP3：真實 Chrome + suno.com 驗收
+
+- 使用者在自己的 Chrome 載入擴充，於 suno.com 播放自己帳號的歌曲，以面板「● 錄成 MP3」錄製並停止，檔案自動存到 下載/ClearAudio/。
+- `Suno-20261008-174303.mp3`：ffprobe 為 MP3、44.1 kHz、stereo、192 kbps、28.5 秒；ffmpeg 完整解碼無錯；volumedetect 平均 −19.4 dB、峰值 −3.1 dB；silencedetect（−50 dB／0.5 s）無靜音段。
+- `Suno-20261008-174229.mp3`：8.5 秒、全程 −91 dB（錄音時未播放）。據此新增「全程無聲」提醒。
+- 發現檔名與 ID3 標題取自分頁標題（"Suno | AI Music"），非歌名。suno.com 提供 navigator.mediaSession.metadata（title／artist），據此改為以歌名命名並寫入 TIT2／TPE1。此修正尚待再次真實驗收。
+- 未驗：Edge、長時間錄音、錄音中切歌、下載設定為「每次詢問位置」時的行為。
+
 ## 2026-10-08 v0.4 / 擴充 v0.3：介面美化與功能補強
 
 - 分頁控制台重新設計：淺色／深色主題（prefers-color-scheme）、狀態膠囊、數值磁貼（峰值保持、削波次數、檔案大小、取樣率）、近 30 秒真實峰值歷史 canvas、dB 刻度電平、本次已保存清單、Alt+R/S/X 快捷鍵、錄音中 REC 徽章（控制台關閉時自動清除）。未新增任何權限。

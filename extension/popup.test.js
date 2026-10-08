@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  view, render, recordability, loadKbps, saveKbps,
+  view, render, recordability, loadKbps, saveKbps, SILENT_WARNING,
   KBPS_STORAGE_KEY, DEFAULT_KBPS, NOT_RECORDABLE,
 } from './popup.js';
 import {meterValue} from './helpers.js';
@@ -201,4 +201,37 @@ test('render applies text with textContent only and moves focus only on mode cha
   assert.equal(el('start').disabled, true);
   assert.equal(el('source-warning').textContent, NOT_RECORDABLE);
   assert.equal(el('source-warning').hidden, false);
+});
+
+test('silent last recording shows the warning; a normal one does not', () => {
+  const base = {filename: 'Song-20261008-120000.mp3', downloadId: 3, seconds: 10, bytes: 1000};
+  const silent = view({state: 'idle', last: {...base, silent: true}}, httpTab);
+  assert.equal(silent.last.warning, SILENT_WARNING);
+  assert.match(silent.last.warning, /全程無聲/);
+  const loud = view({state: 'idle', last: {...base, silent: false}}, httpTab);
+  assert.equal(loud.last.warning, '');
+  assert.equal(view({state: 'idle', last: base}, httpTab).last.warning, '');
+  assert.equal(view({state: 'idle'}, httpTab).last, null);
+});
+
+test('render shows the silent warning only in the saved card when last.silent', () => {
+  const els = new Map();
+  const el = id => {
+    if (!els.has(id)) els.set(id, {id, textContent: '', hidden: true, disabled: false, checked: false, value: 0, dataset: {}, focus() {}});
+    return els.get(id);
+  };
+  const doc = {body: {dataset: {}}, getElementById: el};
+  const base = {filename: 'a.mp3', downloadId: 1, seconds: 5, bytes: 10};
+
+  render(view({state: 'idle', last: {...base, silent: true}}, httpTab), doc);
+  assert.equal(el('last-section').hidden, false);
+  assert.equal(el('last-warning').hidden, false);
+  assert.equal(el('last-warning').textContent, SILENT_WARNING);
+
+  render(view({state: 'idle', last: {...base, silent: false}}, httpTab), doc);
+  assert.equal(el('last-warning').hidden, true);
+  assert.equal(el('last-warning').textContent, '');
+
+  render(view({state: 'recording', title: 'T', seconds: 1, bytes: 1, peak: 0, peakHold: 0}, httpTab), doc);
+  assert.equal(el('last-section').hidden, true);
 });

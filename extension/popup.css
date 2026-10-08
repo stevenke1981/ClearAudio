@@ -244,6 +244,11 @@ legend {
   margin-bottom: 10px;
 }
 
+/* Silent-recording warning sits between the meta line and the show button. */
+.saved .warn {
+  margin: 0 0 10px;
+}
+
 .error {
   background: var(--error-bg);
   border-color: rgba(179, 38, 30, 0.35);

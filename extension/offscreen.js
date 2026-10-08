@@ -1,7 +1,7 @@
 // Offscreen document: tab audio capture -> lamejs MP3 encoding.
 // createRecorder(deps) holds the testable lifecycle; the bottom wires real browser globals
 // and the chrome.runtime listener only when running inside an extension.
-import {Mp3Stream, id3v2Title, MP3_LIMIT} from './mp3.js';
+import {Mp3Stream, id3v2Tags, MP3_LIMIT} from './mp3.js';
 
 const KBPS_OPTIONS = [128, 192, 320];
 const SUPPORTED_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000];
@@ -70,7 +70,7 @@ export function createRecorder(deps) {
       if (s.cancelled) return;
       await release(s);
       const chunks = s.mp3.finish();
-      const blob = new deps.Blob([id3v2Title(s.title), ...chunks], {type: 'audio/mpeg'});
+      const blob = new deps.Blob([id3v2Tags({title: s.title, artist: s.artist}), ...chunks], {type: 'audio/mpeg'});
       const url = deps.URL.createObjectURL(blob);
       if (session === s) session = null;
       send({
@@ -79,6 +79,7 @@ export function createRecorder(deps) {
         url,
         seconds: s.frames / s.sampleRate,
         bytes: blob.size,
+        peakHold: s.peakHold,
         reason,
       });
     } catch (err) {
@@ -137,6 +138,7 @@ export function createRecorder(deps) {
 
     const s = {
       title: typeof msg.title === 'string' ? msg.title : '',
+      artist: typeof msg.artist === 'string' ? msg.artist : '',
       starting: true,
       frames: 0, peak: 0, peakHold: 0, clips: 0,
       sampleRate: 0,
@@ -189,9 +191,12 @@ export function createRecorder(deps) {
     }
   }
 
-  function stop() {
+  // Optional title/artist override the start values (background may learn them after start).
+  function stop(msg = {}) {
     const s = session;
     if (!s || s.starting) return {error: '沒有進行中的錄音'};
+    if (typeof msg.title === 'string') s.title = msg.title;
+    if (typeof msg.artist === 'string') s.artist = msg.artist;
     if (!s.finishing) lastFinish = finishSession(s, 'stop');
     return {ok: true};
   }
@@ -214,7 +219,7 @@ export function createRecorder(deps) {
     if (msg?.target !== 'offscreen') return null;
     switch (msg.type) {
       case 'start': return start(msg);
-      case 'stop': return stop();
+      case 'stop': return stop(msg);
       case 'cancel': return cancel();
       case 'revoke':
         try {

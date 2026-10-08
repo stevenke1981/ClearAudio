@@ -44,7 +44,35 @@ chrome.tabs.onRemoved?.addListener(tabId => {
 // status.state: idle | starting | recording | saving | error
 let status = {state: 'idle'};
 let lastKbps = DEFAULT_KBPS;
-let pending = null; // {downloadId, url, filename, seconds, bytes, timer} while the MP3 download is running
+let pending = null; // {downloadId, url, filename, seconds, bytes, silent, timer} while the MP3 download is running
+const SILENT_PEAK = 1e-4; // about -80 dBFS; a peakHold at or below this counts as silence
+const MEDIA_MAX = 200;
+
+// Best effort: the page's Media Session metadata (the real song name, which the tab title often lacks).
+// Needs only activeTab; any failure (no injection rights, closed tab, no metadata) yields null.
+async function readMediaInfo(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: {tabId},
+      func: () => {
+        const m = navigator.mediaSession && navigator.mediaSession.metadata;
+        return m ? {title: m.title || '', artist: m.artist || '', album: m.album || ''} : null;
+      },
+    });
+    const r = results?.[0]?.result;
+    if (!r || typeof r !== 'object') return null;
+    const clean = v => (typeof v === 'string' ? v.trim().slice(0, MEDIA_MAX) : '');
+    return {title: clean(r.title), artist: clean(r.artist), album: clean(r.album)};
+  } catch {
+    return null;
+  }
+}
+
+// Recording name: "<song> - <artist>" when both known, the song alone, else the tab title.
+function recordingName(songTitle, artist, tabTitle) {
+  if (!songTitle) return tabTitle;
+  return artist ? `${songTitle} - ${artist}` : songTitle;
+}
 
 function broadcast() {
   try {
@@ -102,13 +130,18 @@ async function startMp3({tabId, title, origin, kbps}) {
   status = {state: 'starting', tabId, title, origin, kbps};
   broadcast();
   try {
+    const media = await readMediaInfo(tabId);
+    const songTitle = media?.title || '';
+    const artist = songTitle ? media.artist : '';
+    const name = recordingName(songTitle, artist, title);
+    status = {state: 'starting', tabId, title: name, origin, kbps, songTitle, artist};
     // No consumerTabId: the offscreen document consumes the stream.
     const streamId = await chrome.tabCapture.getMediaStreamId({targetTabId: tabId});
     await openOffscreen();
-    const res = await toOffscreen({type: 'start', streamId, kbps, title});
+    const res = await toOffscreen({type: 'start', streamId, kbps, title: songTitle || title, artist});
     if (!res || res.ok !== true) throw Error(res?.error || '離屏錄音器未回應');
     lastKbps = kbps;
-    status = {state: 'recording', tabId, title, origin, kbps, seconds: 0, bytes: 0};
+    status = {state: 'recording', tabId, title: name, origin, kbps, songTitle, artist, seconds: 0, bytes: 0};
     await setRecordingBadge(true);
     broadcast();
     return {...status};
@@ -118,9 +151,23 @@ async function startMp3({tabId, title, origin, kbps}) {
   }
 }
 
+// Adopts a song title the page exposes only after start (e.g. playback began later). Returns true if adopted.
+async function adoptMedia() {
+  if (status.state !== 'recording' || status.songTitle || !Number.isSafeInteger(status.tabId)) return false;
+  const media = await readMediaInfo(status.tabId);
+  if (!media?.title || status.state !== 'recording' || status.songTitle) return false;
+  const artist = media.artist;
+  status = {...status, title: recordingName(media.title, artist, status.title), songTitle: media.title, artist};
+  return true;
+}
+
 async function stopMp3() {
   if (status.state !== 'recording') throw Error('目前沒有錄音');
-  const res = await toOffscreen({type: 'stop'});
+  // Offscreen builds the ID3 tag itself, so a title learned now is handed over with the stop message.
+  const adopted = await adoptMedia();
+  const res = await toOffscreen(adopted
+    ? {type: 'stop', title: status.songTitle, artist: status.artist}
+    : {type: 'stop'});
   if (!res || res.ok !== true) {
     await failMp3(res?.error || '停止錄音失敗，錄音已遺失');
     throw Error(status.error);
@@ -151,7 +198,7 @@ async function settleDownload(ok, reason) {
   clearPending();
   await revokeAndClose(p.url);
   status = ok
-    ? {state: 'idle', last: {filename: p.filename, downloadId: p.downloadId, seconds: p.seconds, bytes: p.bytes}}
+    ? {state: 'idle', last: {filename: p.filename, downloadId: p.downloadId, seconds: p.seconds, bytes: p.bytes, silent: p.silent}}
     : {state: 'error', error: reason};
   broadcast();
 }
@@ -161,8 +208,15 @@ async function onFinished(m) {
     await revokeAndClose(typeof m.url === 'string' ? m.url : null);
     return;
   }
+  await adoptMedia();
+  if (status.state !== 'recording') {
+    await revokeAndClose(m.url);
+    return;
+  }
   const {title, origin, kbps} = status;
   const seconds = finiteOr0(m.seconds), bytes = finiteOr0(m.bytes);
+  // Whole-recording peak below about -80 dBFS: the file is still saved, but the panel warns.
+  const silent = !(finiteOr0(m.peakHold) >= SILENT_PEAK);
   status = {state: 'saving', title, origin, kbps, seconds, bytes};
   await setRecordingBadge(false);
   const filename = 'ClearAudio/' + mp3FileStem(title, new Date()) + '.mp3';
@@ -175,7 +229,7 @@ async function onFinished(m) {
     return;
   }
   pending = {
-    downloadId, url: m.url, filename, seconds, bytes,
+    downloadId, url: m.url, filename, seconds, bytes, silent,
     timer: setTimeout(() => settleDownload(true), DOWNLOAD_TIMEOUT_MS),
   };
   broadcast();

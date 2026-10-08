@@ -59,7 +59,17 @@ globalThis.chrome = {
     onChanged: {addListener: f => { downloadListener = f; }},
   },
   commands: {onCommand: {addListener: f => { commandListener = f; }}},
+  scripting: {
+    executeScript: async p => {
+      scriptCalls.push(p);
+      if (mediaThrows) throw Error('cannot access tab');
+      return [{result: mediaResult}];
+    },
+  },
 };
+// Media Session metadata reported by the page (null = none). Set per test.
+let mediaResult = null, mediaThrows = false;
+const scriptCalls = [];
 
 await import('./background.js');
 
@@ -223,7 +233,7 @@ test('finished saves via downloads with a sanitized ClearAudio name, then revoke
   await resetIdle();
   await startRecording({title: 'Bad:Name? | Suno'});
   downloads.length = 0; sent.length = 0; offscreenCalls.close = 0;
-  fromOffscreen({type: 'finished', url: 'blob:x', seconds: 3, bytes: 9000, reason: 'stop'});
+  fromOffscreen({type: 'finished', url: 'blob:x', seconds: 3, bytes: 9000, peakHold: 0.5, reason: 'stop'});
   await flush();
   assert.equal((await popup({type: 'mp3-status'})).state, 'saving');
   assert.equal(downloads.length, 1);
@@ -236,7 +246,7 @@ test('finished saves via downloads with a sanitized ClearAudio name, then revoke
   await flush();
   const st = await popup({type: 'mp3-status'});
   assert.equal(st.state, 'idle');
-  assert.deepEqual(st.last, {filename: params.filename, downloadId: id, seconds: 3, bytes: 9000});
+  assert.deepEqual(st.last, {filename: params.filename, downloadId: id, seconds: 3, bytes: 9000, silent: false});
   assert.deepEqual(sentTo('revoke').map(m => m.url), ['blob:x']);
   assert.equal(offscreenCalls.close, 1);
   assert.equal(offscreenOpen, false);
@@ -365,4 +375,162 @@ test('offscreen messages from a non-offscreen sender are ignored', async () => {
   message({from: 'offscreen', type: 'error', message: 'spoof'}, {id: 'test', url: 'https://example.test/offscreen.html'}, () => {});
   await flush();
   assert.equal((await popup({type: 'mp3-status'})).state, 'idle');
+});
+
+// ---- media title (Media Session) ----
+// Finishes the current recording with the given peakHold and returns the saved download and final status.
+async function finishWith({peakHold = 0.5} = {}) {
+  downloads.length = 0;
+  fromOffscreen({type: 'finished', url: 'blob:m', seconds: 4, bytes: 5000, peakHold, reason: 'stop'});
+  await flush();
+  const {id} = downloads.at(-1);
+  downloadListener({id, state: {current: 'complete'}});
+  await flush();
+  return {download: downloads.at(-1).params, st: await popup({type: 'mp3-status'})};
+}
+
+test('media title and artist name the recording when the page exposes metadata', async () => {
+  await resetIdle();
+  mediaResult = {title: '  Midnight Sky  ', artist: ' Suno AI ', album: ''};
+  scriptCalls.length = 0;
+  sent.length = 0;
+  const st = await startRecording({title: 'Suno | AI Music'});
+  assert.deepEqual(scriptCalls[0].target, {tabId: 42});
+  assert.equal(st.title, 'Midnight Sky - Suno AI');
+  assert.equal(st.songTitle, 'Midnight Sky');
+  assert.equal(st.artist, 'Suno AI');
+  const start = sentTo('start')[0];
+  assert.equal(start.title, 'Midnight Sky');
+  assert.equal(start.artist, 'Suno AI');
+  const {download} = await finishWith();
+  assert.match(download.filename, /^ClearAudio\/Midnight Sky - Suno AI-\d{8}-\d{6}\.mp3$/);
+  assert.equal((await popup({type: 'mp3-status'})).last.filename, download.filename);
+  mediaResult = null;
+});
+
+test('song title without artist uses the title alone', async () => {
+  await resetIdle();
+  mediaResult = {title: 'Only Song', artist: '', album: ''};
+  const st = await startRecording({title: 'Some tab'});
+  assert.equal(st.title, 'Only Song');
+  assert.equal(st.artist, '');
+  assert.equal(sentTo('start').at(-1).artist, '');
+  await finishWith();
+  mediaResult = null;
+});
+
+test('media strings are capped at 200 characters', async () => {
+  await resetIdle();
+  mediaResult = {title: 'a'.repeat(300), artist: 'b'.repeat(300), album: ''};
+  const st = await startRecording({title: 'tab'});
+  assert.equal(st.songTitle.length, 200);
+  assert.equal(st.artist.length, 200);
+  await finishWith();
+  mediaResult = null;
+});
+
+test('falls back to the tab title when executeScript throws', async () => {
+  await resetIdle();
+  mediaThrows = true;
+  const st = await startRecording({title: 'Suno | AI Music'});
+  mediaThrows = false;
+  assert.equal(st.title, 'Suno | AI Music');
+  assert.ok(!st.songTitle);
+  assert.equal(sentTo('start').at(-1).title, 'Suno | AI Music');
+  const {download} = await finishWith();
+  assert.match(download.filename, /^ClearAudio\/Suno-\d{8}-\d{6}\.mp3$/);
+});
+
+test('falls back to the tab title when the page has no media metadata', async () => {
+  await resetIdle();
+  mediaResult = null;
+  const st = await startRecording({title: 'Plain tab'});
+  assert.equal(st.title, 'Plain tab');
+  assert.equal(sentTo('start').at(-1).artist, '');
+  await finishWith();
+});
+
+test('a media result with a blank title is treated as not found', async () => {
+  await resetIdle();
+  mediaResult = {title: '   ', artist: 'Someone', album: ''};
+  const st = await startRecording({title: 'Tab name'});
+  assert.equal(st.title, 'Tab name');
+  assert.ok(!st.artist);
+  await finishWith();
+  mediaResult = null;
+});
+
+test('readMediaInfo func reads Media Session metadata and tolerates a missing mediaSession', async () => {
+  await resetIdle();
+  mediaResult = null;
+  await startRecording();
+  const func = scriptCalls.at(-1).func;
+  await finishWith();
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  try {
+    Object.defineProperty(globalThis, 'navigator', {value: {mediaSession: {metadata: {title: 'T', artist: undefined}}}, configurable: true});
+    assert.deepEqual(func(), {title: 'T', artist: '', album: ''});
+    Object.defineProperty(globalThis, 'navigator', {value: {mediaSession: {metadata: null}}, configurable: true});
+    assert.equal(func(), null);
+    Object.defineProperty(globalThis, 'navigator', {value: {}, configurable: true});
+    assert.equal(func(), null);
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'navigator', original);
+    else delete globalThis.navigator;
+  }
+});
+
+test('a media title learned only at stop is passed to offscreen and used for the filename', async () => {
+  await resetIdle();
+  mediaResult = null;
+  await startRecording({title: 'Suno | AI Music'});
+  sent.length = 0;
+  mediaResult = {title: 'Late Song', artist: 'Late Artist', album: ''};
+  assert.deepEqual(await popup({type: 'mp3-stop'}), {ok: true});
+  const stop = sentTo('stop')[0];
+  assert.equal(stop.title, 'Late Song');
+  assert.equal(stop.artist, 'Late Artist');
+  assert.equal((await popup({type: 'mp3-status'})).title, 'Late Song - Late Artist');
+  const {download} = await finishWith();
+  assert.match(download.filename, /^ClearAudio\/Late Song - Late Artist-/);
+  mediaResult = null;
+});
+
+test('a media title learned only after the track ends is used for the filename', async () => {
+  await resetIdle();
+  mediaResult = null;
+  await startRecording({title: 'Suno | AI Music'});
+  mediaResult = {title: 'Ended Song', artist: '', album: ''};
+  const {download} = await finishWith();
+  assert.match(download.filename, /^ClearAudio\/Ended Song-/);
+  mediaResult = null;
+});
+
+test('silent flag: a recording whose whole-recording peakHold is below -80 dBFS is saved but marked silent', async () => {
+  await resetIdle();
+  mediaResult = null;
+  await startRecording();
+  let r = await finishWith({peakHold: 0});
+  assert.equal(r.st.state, 'idle');
+  assert.equal(r.st.last.silent, true);
+  assert.ok(r.download.filename);
+
+  await startRecording();
+  r = await finishWith({peakHold: 0.00005});
+  assert.equal(r.st.last.silent, true);
+
+  await startRecording();
+  r = await finishWith({peakHold: 0.001});
+  assert.equal(r.st.last.silent, false);
+
+  await startRecording();
+  r = await finishWith({peakHold: 1});
+  assert.equal(r.st.last.silent, false);
+});
+
+test('a finished message without peakHold is treated as silent', async () => {
+  await resetIdle();
+  await startRecording();
+  const r = await finishWith({peakHold: null});
+  assert.equal(r.st.last.silent, true);
 });

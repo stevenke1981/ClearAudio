@@ -103,11 +103,8 @@ function synchsafe(n) {
   return [(n >>> 21) & 0x7f, (n >>> 14) & 0x7f, (n >>> 7) & 0x7f, n & 0x7f];
 }
 
-// ID3v2.3 tag holding one TIT2 (title) frame, UTF-16 with BOM. Blank title -> empty array.
-export function id3v2Title(title) {
-  const text = String(title ?? '').trim();
-  if (!text) return new Uint8Array(0);
-
+// One ID3v2.3 text frame (ID, UTF-16 with BOM). Text must be non-empty.
+function textFrame(id, text) {
   // Text frame body: encoding byte 0x01 (UTF-16 with BOM), BOM FF FE, UTF-16LE code units.
   const body = new Uint8Array(3 + text.length * 2);
   body[0] = 0x01;
@@ -121,18 +118,40 @@ export function id3v2Title(title) {
 
   // Frame header: ID, plain 32-bit big-endian size, 2 flag bytes.
   const frame = new Uint8Array(10 + body.length);
-  frame.set([0x54, 0x49, 0x54, 0x32], 0); // "TIT2"
+  for (let i = 0; i < 4; i++) frame[i] = id.charCodeAt(i);
   const size = body.length;
   frame[4] = (size >>> 24) & 0xff;
   frame[5] = (size >>> 16) & 0xff;
   frame[6] = (size >>> 8) & 0xff;
   frame[7] = size & 0xff;
   frame.set(body, 10);
+  return frame;
+}
 
+// ID3v2.3 tag with TIT2 (title) and TPE1 (artist) frames, each UTF-16 with BOM.
+// Blank values are omitted; if both are blank the result is an empty array.
+export function id3v2Tags({title, artist} = {}) {
+  const frames = [];
+  const t = String(title ?? '').trim();
+  const a = String(artist ?? '').trim();
+  if (t) frames.push(textFrame('TIT2', t));
+  if (a) frames.push(textFrame('TPE1', a));
+  if (frames.length === 0) return new Uint8Array(0);
+
+  const framesLength = frames.reduce((n, f) => n + f.length, 0);
   // Tag header: "ID3", version 2.3.0, flags 0, synchsafe size of the frame data.
-  const header = new Uint8Array([0x49, 0x44, 0x33, 0x03, 0x00, 0x00, ...synchsafe(frame.length)]);
-  const tag = new Uint8Array(header.length + frame.length);
+  const header = new Uint8Array([0x49, 0x44, 0x33, 0x03, 0x00, 0x00, ...synchsafe(framesLength)]);
+  const tag = new Uint8Array(header.length + framesLength);
   tag.set(header, 0);
-  tag.set(frame, header.length);
+  let offset = header.length;
+  for (const f of frames) {
+    tag.set(f, offset);
+    offset += f.length;
+  }
   return tag;
+}
+
+// ID3v2.3 tag holding one TIT2 (title) frame. Blank title -> empty array.
+export function id3v2Title(title) {
+  return id3v2Tags({title});
 }
