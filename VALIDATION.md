@@ -1,5 +1,22 @@
 # 驗證記錄
 
+## 2026-10-16：獨立 review F1 後續修正（待同 reviewer 回驗）
+
+- 前一候選 `ba7d7dd9f817619e8ba4b6e8c8fbdad2dddf498c` 的停止／來源結束取消修正獲獨立 review 限定範圍 PASS；review 同時在原始基準及前一候選重現既有 F1：編碼錯誤收尾等待 `AudioContext.close()` 時取消，舊 `fail()` 仍會送出 `error`。真實瀏覽器是否因此中斷新錄音未驗。
+- 最小修正：`fail()` 在非同步資源釋放後再次檢查該 session 的取消旗標，不送出已取消工作延遲到達的錯誤事件。
+- RED：`node --test --test-reporter=tap --test-name-pattern='cancel suppresses pending encoder error' extension/offscreen.test.js`，exit 1，2/2 失敗（取消後 error 數量 1，預期 0）。涵蓋取消後閒置及舊 close 尚未完成就啟動新 session。
+- GREEN：`node --test --test-reporter=tap extension/offscreen.test.js`，exit 0，22/22；`node --test --test-reporter=tap extension/*.test.js`，exit 0，129/129。新 session 使用獨立 mock stream，驗證不受舊錯誤收尾影響且可正常停止保存；既有未取消錯誤回報測試仍通過。
+- 本次仍僅合成 PCM／mock browser 生命週期與既有真實 lamejs 編碼測試；未錄音、未操作 GUI、未編譯 Rust，未 push／PR／Release。下方未驗事項及 binary hold 保留。
+
+## 2026-10-16：MP3 取消與停止收尾競態（本機候選，待獨立 review）
+
+- 基準：`932e9beebdc695b41435fcc8ce5637e57cc6ef97`；Windows build 26300、Node.js v24.21.0。未啟動真實捕捉、播放、GUI 或 Rust 編譯。
+- 缺陷：手動停止或來源結束已完成 worklet drain，但 `AudioContext.close()` 尚未完成時收到取消，原程式仍會建立 MP3 blob URL 並送出 `finished`。在非同步釋放資源之後補上取消檢查，避免提交已取消的錄音。
+- RED：`node --test --test-name-pattern='awaits AudioContext.close' extension/offscreen.test.js`，exit 1；兩個新增案例都觀察到取消後仍建立 1 個 blob（預期 0）。
+- GREEN：`node --test --test-reporter=tap extension/offscreen.test.js`，exit 0，20/20 通過；涵蓋停止／來源結束收尾期間取消、不送完成或錯誤事件、資源釋放，以及下一次錄音可正常保存。
+- 回歸：`node --test --test-reporter=tap extension/*.test.js`，exit 0，127/127 通過（修正前既有 125/125）。生命週期案例使用合成 PCM 與 mock browser API；既有 lamejs 測試使用真正編碼器。
+- 未驗：真實 Chrome／Edge 的取消競態、後續歌名／ID3 真實流程、原生非靜音與跨程序隔離、長時間錄音及裝置／磁碟故障。本輪不把下方 2026-10-08 歷史測試當作本輪結果。binary Release hold 保留，未 push／PR／Release。
+
 ## 2026-10-08 v0.5：依 ui-visual-design skill 重新設計（Apple 語彙＋深綠品牌）
 
 - 三個 Haiku 代理依 skill 與 DESIGN-INTENT.md 分別重設 popup、WAV 控制台、原生 GUI；ids／data-state／JS 契約未變。
@@ -24,9 +41,9 @@
 - --gui-smoke：idle／recording／converting／error／import／recording-signal（合成值，畫面明示「預覽合成值 · 非真實音訊」）／720px@144dpi 皆 PASS 控件邊界審計並人工檢視 PNG。
 - 控制台頁在 Chrome 以本機靜態伺服預覽（非擴充環境、未捕捉）：桌面與 360px 寬無水平溢出。注入的錄音狀態值僅供檢視樣式。
 
-# 驗證記錄
+## 2026-10-08：早期一般授權音訊工作流程（歷史記錄）
 
-2026-10-08，一般授權音訊工作流程改善。未接觸任何網站播放、登入、下載或私人音訊。
+以下「未安裝／未捕捉」及待驗事項僅描述該次早期工作階段；同日稍後的 Chrome MP3 真實驗收另記於上方。本輪未重做這些歷史測試。該早期工作階段未接觸任何網站播放、登入、下載或私人音訊。
 
 - 17 個 Node tests 通過（含生命週期父測試）：來源綁定、拒重複 capture、非控制台 sender 拒絕、檔名清理、真實 PCM peak、非空目的檔拒絕，以及 mock 選檔取消、停止提交、取消 abort、磁碟失敗、來源結束與可再次錄音。另含原有 WAV／worklet tests。
 - 5 個 Rust tests 通過；fmt、clippy 無警告。Rust 捕捉與轉檔邏輯沿用既有版本，此輪只移除特定第三方 App 的 FFmpeg 路徑自動探測，使用 PATH／手動選取。

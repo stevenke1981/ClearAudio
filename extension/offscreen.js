@@ -42,6 +42,8 @@ export function createRecorder(deps) {
     if (s.failed || s.cancelled) return;
     s.failed = true;
     await release(s);
+    // A cancelled session must not report a late error after cleanup completes.
+    if (s.cancelled) return;
     if (session === s) session = null;
     send({from: 'offscreen', type: 'error', message: err?.message || String(err)});
   }
@@ -69,6 +71,8 @@ export function createRecorder(deps) {
       if (s.node && s.context?.state === 'running') await drain(s);
       if (s.cancelled) return;
       await release(s);
+      // Cancellation may arrive while AudioContext.close() is still pending.
+      if (s.cancelled) return;
       const chunks = s.mp3.finish();
       const blob = new deps.Blob([id3v2Tags({title: s.title, artist: s.artist}), ...chunks], {type: 'audio/mpeg'});
       const url = deps.URL.createObjectURL(blob);
