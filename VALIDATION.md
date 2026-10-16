@@ -1,5 +1,13 @@
 # 驗證記錄
 
+## 2026-10-16：獨立 review F1 後續修正（待同 reviewer 回驗）
+
+- 前一候選 `ba7d7dd9f817619e8ba4b6e8c8fbdad2dddf498c` 的停止／來源結束取消修正獲獨立 review 限定範圍 PASS；review 同時在原始基準及前一候選重現既有 F1：編碼錯誤收尾等待 `AudioContext.close()` 時取消，舊 `fail()` 仍會送出 `error`。真實瀏覽器是否因此中斷新錄音未驗。
+- 最小修正：`fail()` 在非同步資源釋放後再次檢查該 session 的取消旗標，不送出已取消工作延遲到達的錯誤事件。
+- RED：`node --test --test-reporter=tap --test-name-pattern='cancel suppresses pending encoder error' extension/offscreen.test.js`，exit 1，2/2 失敗（取消後 error 數量 1，預期 0）。涵蓋取消後閒置及舊 close 尚未完成就啟動新 session。
+- GREEN：`node --test --test-reporter=tap extension/offscreen.test.js`，exit 0，22/22；`node --test --test-reporter=tap extension/*.test.js`，exit 0，129/129。新 session 使用獨立 mock stream，驗證不受舊錯誤收尾影響且可正常停止保存；既有未取消錯誤回報測試仍通過。
+- 本次仍僅合成 PCM／mock browser 生命週期與既有真實 lamejs 編碼測試；未錄音、未操作 GUI、未編譯 Rust，未 push／PR／Release。下方未驗事項及 binary hold 保留。
+
 ## 2026-10-16：MP3 取消與停止收尾競態（本機候選，待獨立 review）
 
 - 基準：`932e9beebdc695b41435fcc8ce5637e57cc6ef97`；Windows build 26300、Node.js v24.21.0。未啟動真實捕捉、播放、GUI 或 Rust 編譯。

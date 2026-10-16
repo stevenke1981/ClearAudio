@@ -42,6 +42,8 @@ export function createRecorder(deps) {
     if (s.failed || s.cancelled) return;
     s.failed = true;
     await release(s);
+    // A cancelled session must not report a late error after cleanup completes.
+    if (s.cancelled) return;
     if (session === s) session = null;
     send({from: 'offscreen', type: 'error', message: err?.message || String(err)});
   }

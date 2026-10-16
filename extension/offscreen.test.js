@@ -336,6 +336,57 @@ test('encoder error releases everything and reports error message', async () => 
   assert.equal(env.sent.filter(m => m.type === 'finished').length, 0);
 });
 
+for (const restart of [false, true]) {
+  test(`cancel suppresses pending encoder error (restart: ${restart})`, {timeout: 2000}, async () => {
+    const env = makeEnv();
+    await env.handle({type: 'start', streamId: 'old', kbps: 128});
+    const oldContext = env.contexts[0];
+    const closes = [];
+    oldContext.close = () => new Promise(resolve => closes.push(() => {
+      oldContext.state = 'closed';
+      oldContext.closed = true;
+      resolve();
+    }));
+    env.encoder.fail = true;
+    env.pcm(new Float32Array(1152 * 2).fill(0.2));
+    assert.equal(closes.length, 1, 'error cleanup must be awaiting close');
+    const cancelling = env.handle({type: 'cancel'});
+    assert.equal(closes.length, 2);
+
+    const freshTrack = {
+      readyState: 'live', stopped: false, onended: null,
+      stop() { this.stopped = true; this.readyState = 'ended'; },
+    };
+    if (restart) {
+      env.deps.getUserMedia = async () => ({
+        getTracks: () => [freshTrack], getAudioTracks: () => [freshTrack],
+      });
+      assert.equal((await env.handle({type: 'start', streamId: 'new', kbps: 128})).ok, true);
+    }
+    closes[1](); // Cancellation completes before the original error cleanup.
+    assert.deepEqual(await cancelling, {ok: true});
+    closes[0]();
+    await env.settle();
+
+    assert.equal(env.sent.filter(m => m.type === 'error').length, 0, 'cancel must suppress the old session error');
+    assert.equal(env.sent.filter(m => m.type === 'finished').length, 0);
+    assert.equal(env.created.length, 0);
+    assert.equal(env.track.stopped, true);
+    assert.equal(oldContext.closed, true);
+    assert.equal(env.recorder.active, restart);
+    if (restart) {
+      assert.equal(freshTrack.stopped, false);
+      assert.equal(env.contexts[1].closed, false);
+      await env.handle({type: 'stop'});
+      await env.settle();
+      assert.equal(env.created.length, 1);
+      assert.equal(env.sent.filter(m => m.type === 'finished').length, 1);
+      assert.equal(freshTrack.stopped, true);
+      assert.equal(env.recorder.active, false);
+    }
+  });
+}
+
 test('encoder size limit finishes with reason limit and keeps encoded audio', async () => {
   const env = makeEnv({maxBytes: 15});
   await env.handle({type: 'start', streamId: 'sid', kbps: 128});
