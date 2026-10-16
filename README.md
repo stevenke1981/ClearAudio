@@ -7,7 +7,7 @@
 | 模式 | 實作 | 驗證程度 |
 |---|---|---|
 | 指定應用程式 | Windows process-loopback，包含指定 PID 與子程序，保存 float PCM WAV | API 生命週期測過；非靜音與跨程序隔離尚待有播放端點的互動桌面驗收 |
-| 分頁一鍵 MP3 | 點擴充圖示 →「● 錄成 MP3」，offscreen 擷取＋lamejs 編碼，停止後自動存到「下載/ClearAudio/」 | 真實 lamejs 編碼測試＋mock 生命週期；未完成真實瀏覽器授權驗收 |
+| 分頁一鍵 MP3 | 點擴充圖示 →「● 錄成 MP3」，offscreen 擷取＋lamejs 編碼，停止後自動存到「下載/ClearAudio/」 | 2026-10-08 曾完成真實 Chrome 錄音與存檔驗收；後續歌名／ID3 修改及本輪取消修正尚未重做真實瀏覽器驗收；詳見 VALIDATION.md |
 | 分頁無損 WAV | 面板「進階：錄成無損 WAV」開控制台，float PCM WAV | 自產 PCM／mock 生命週期測試通過；未完成真實授權驗收 |
 | MP3 / FLAC 另存 | 外部 FFmpeg，VBR q2／CBR192／CBR320／FLAC 24-bit | 自產音訊轉檔、解碼、取消與來源保留已驗證 |
 
@@ -48,7 +48,7 @@ WAV 是「無額外有損編碼」，不代表網站原始音源無損或 bit-pe
 
 FLAC 轉檔會把 float 量化至 24-bit 整數，不與 float 原樣本完全等價；WAV 原檔保留。MP3 為有損副本。無 RF64 或自動分段；WAV 接近 4 GB 會停止。磁碟故障、程序崩潰、強制關閉或斷電可能造成資料損失。
 
-目前測試工作階段沒有播放端點，預設端點 API 回傳 `0x80070490`，因此不宣稱非靜音錄音通過。來源關閉、裝置切換、長時間與磁碟故障的真實驗收見 [MANUAL-TESTS.md](MANUAL-TESTS.md)。
+2026-10-08 原生測試工作階段沒有播放端點，預設端點 API 回傳 `0x80070490`，因此尚不宣稱原生非靜音錄音通過；這不否定同日另記的 Chrome 分頁 MP3 歷史驗收。本輪未重測音訊端點。來源關閉、裝置切換、長時間與磁碟故障的真實驗收見 [MANUAL-TESTS.md](MANUAL-TESTS.md)。
 
 ## 建置與測試
 
